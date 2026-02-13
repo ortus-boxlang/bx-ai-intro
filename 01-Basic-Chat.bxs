@@ -1,0 +1,26 @@
+results = aiChat( "What is ColdBox?" )
+println( results )
+
+// Custom Provider + Default Model: claude-sonnet-4-5
+// results = aiChat( "What is ColdBox?", {}, { provider: "claude" } )
+// println( results )
+
+// Custom Provider + Model
+// results = aiChat(
+//     "What is ColdBox?",
+//     { model: "claude-3-haiku-20240307"},
+//     { provider: "claude" }
+// )
+// println( results )
+
+// Log Request
+// results = aiChat( "What is ColdBox?", {}, { logRequestToConsole: true } )
+// println( results )
+
+// All Responses
+// results = aiChat( "What is ColdBox?", {}, { returnFormat: "all" } )
+// println( results )
+
+// Raw Response
+// results = aiChat( "What is ColdBox?", {}, { returnFormat: "raw" } )
+// println( results )
