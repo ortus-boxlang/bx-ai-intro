@@ -1,0 +1,18 @@
+// You can also build a conversation with multiple exchanges
+println( "=== Building a Multi-Turn Conversation ===" )
+println( "" )
+
+conversation = [
+    aiMessage().system( "You are a concise technical expert." ),
+    aiMessage().user( "What is a BIF in BoxLang?" ),
+    aiMessage().assistant( "A BIF (Built-In Function) is a function provided by the BoxLang runtime that you can call directly without importing anything." ),
+    aiMessage().user( "Give me an example of a common BIF." )
+]
+
+conversationResponse = aiChat( messages: conversation )
+
+println( "AI Response to conversation:" )
+println( conversationResponse )
+println( "" )
+
+println( "=== Example Complete ===" )
