@@ -15,5 +15,6 @@ println( results )
 // results = aiChat( "What is ColdBox?", {}, { returnFormat: "raw" } )
 // println( results )
 
+// JSON, XML Response
 // results = aiChat( "Give me the top 10 features of ColdBox in JSON format", {}, { returnFormat: "json" } )
 // println( results )

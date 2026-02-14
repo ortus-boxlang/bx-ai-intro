@@ -18,10 +18,16 @@
                 // This is used to configure default options and parameters for a specific provider
                 // The name of the key is the provider name, each provider can have its own params and options
                 "providers" : {
-                    // openai : {
-                    // 	params : {},
-                    // 	options: {}
-                    // }
+                    "openai" : {
+                    	"params" : {
+							"model": "gpt-3.5-turbo"
+						}
+                    },
+					"claude" : {
+						"params": {
+							"model": "claude-sonnet-4-5"
+						}
+					}
                 },
                 // The default timeout of the ai requests
                 "timeout" : 30,

@@ -1,0 +1,126 @@
+/**
+ * Example: Using aiChat() with Structured Output
+ *
+ * This example demonstrates how to get typed, structured responses from AI
+ * instead of plain text. The AI will automatically populate your class or struct
+ * with the extracted data.
+ */
+// Example 1: Extract product information into a structured object
+println( "=== Example 1: Product Extraction ===" )
+println( "" )
+
+productDescription = "The UltraBook Pro 15 laptop is available for $1,299.99.
+It's in the Electronics category and currently in stock.
+Key features include: 15-inch display, 16GB RAM, 512GB SSD, and long battery life."
+
+product = aiChat(
+    messages: productDescription,
+    options: { provider: "claude", returnFormat: new models.Product() }
+)
+
+println( "Extracted Product:" )
+println( "  Title: #product.title#" )
+println( "  Price: $#numberFormat( product.price, '9.99' )#" )
+println( "  Category: #product.category#" )
+println( "  In Stock: #product.inStock ? 'Yes' : 'No'#" )
+println( "  Features:" )
+product.features.each( feature -> println( "    - #feature#" ) )
+
+
+
+// println( "" )
+// println( "=== Example 2: Multiple Products ===" )
+// println( "" )
+
+// // Example 2: Extract multiple products using an array
+// productList = "Our store has these items:
+// 1. Wireless Mouse - $29.99 - In Stock - Computer Accessories
+// 2. USB-C Cable - $12.99 - Out of Stock - Computer Accessories
+// 3. Mechanical Keyboard - $89.99 - In Stock - Computer Accessories"
+
+// products = aiChat(
+//     messages: productList,
+//     options: { returnFormat: [ new Product() ] }  // Array of Product objects
+// )
+
+// println( "Extracted #products.len()# products:" )
+// println( "" )
+
+// products.each( function( prod, index ) {
+//     println( "#index#. #prod.title# - $#numberFormat( prod.price, '9.99' )# - #prod.inStock ? 'In Stock' : 'Out of Stock'#" )
+// } )
+
+// println( "" )
+// println( "=== Example 3: Using Struct Definition ===" )
+// println( "" )
+
+// // Example 3: Use a struct definition instead of a class
+// var userSchema = {
+//     "firstName": "string",
+//     "lastName": "string",
+//     "age": "numeric",
+//     "email": "string",
+//     "interests": "array"
+// }
+
+// var userText = "John Doe is 30 years old. His email is john.doe@example.com and he enjoys photography, hiking, and cooking."
+
+// var user = aiChat(
+//     userText,
+//     returnFormat: userSchema
+// )
+
+// println( "Extracted User:" )
+// println( "  Name: #user.firstName# #user.lastName#" )
+// println( "  Age: #user.age#" )
+// println( "  Email: #user.email#" )
+// println( "  Interests: #user.interests.toList()#" )
+
+// println( "" )
+// println( "=== Example 4: Nested Structured Output ===" )
+// println( "" )
+
+// // Example 4: Complex nested structures
+// class Address {
+//     property name="street" type="string";
+//     property name="city" type="string";
+//     property name="state" type="string";
+//     property name="zipCode" type="string";
+// }
+
+// class Customer {
+//     property name="fullName" type="string";
+//     property name="email" type="string";
+//     property name="phone" type="string";
+//     property name="address" type="any";  // Will hold Address instance
+// }
+
+// var customerText = "Contact: Jane Smith, email jane@example.com, phone 555-1234.
+// Address: 123 Main Street, San Francisco, CA 94102"
+
+// // Note: For nested objects, you need to provide the full structure
+// var customerSchema = {
+//     "fullName": "string",
+//     "email": "string",
+//     "phone": "string",
+//     "address": {
+//         "street": "string",
+//         "city": "string",
+//         "state": "string",
+//         "zipCode": "string"
+//     }
+// }
+
+// var customer = aiChat(
+//     customerText,
+//     returnFormat: customerSchema
+// )
+
+// println( "Extracted Customer:" )
+// println( "  Name: #customer.fullName#" )
+// println( "  Email: #customer.email#" )
+// println( "  Phone: #customer.phone#" )
+// println( "  Address: #customer.address.street#, #customer.address.city#, #customer.address.state# #customer.address.zipCode#" )
+
+// println( "" )
+// println( "✅ All structured output examples completed!" )
