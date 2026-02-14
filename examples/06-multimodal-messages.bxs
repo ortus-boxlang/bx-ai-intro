@@ -1,0 +1,145 @@
+/**
+ * Example 06: Multimodal Messages
+ *
+ * This example demonstrates how to use aiMessage() with multimodal content:
+ * - Images (URLs and embedded files)
+ * - PDFs (URLs and embedded files)
+ * - Audio files
+ * - Video files
+ * - Documents
+ *
+ * Note: For this example to work with embedded files, you'll need actual files
+ * in the examples/assets/ folder. The example shows both URL-based and file-based approaches.
+ */
+
+println( "=== Example 06: Multimodal Messages ===" )
+println( "" )
+
+// ========================================
+// 1. IMAGE EXAMPLES
+// ========================================
+println( "=== 1. Working with Images ===" )
+println( "" )
+
+// Using an image URL
+imageUrlMessage = aiMessage( "What's in this image?" )
+    .image( "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png" )
+
+println( "Created message with image URL:" )
+println( imageUrlMessage.getMessages() )
+println( "" )
+
+// Using image with detail level (for high-resolution analysis)
+imageDetailMessage = aiMessage( "Analyze this image in detail" )
+    .image( "https://example.com/high-res-image.jpg", "high" )
+
+println( "Image with detail level:" )
+println( "Detail levels: 'auto' (default), 'low' (faster), 'high' (more detailed)" )
+println( "" )
+
+// Embedding an image from file system (converts to base64)
+// Note: Uncomment when you have an actual image file
+// embedMessage = aiMessage( "Describe this image" )
+//     .embedImage( "./examples/assets/sample-image.jpg" )
+//
+// println( "Embedded image from file (base64 encoded)" )
+// println( "File path: ./examples/assets/sample-image.jpg" )
+// println( "" )
+
+// ========================================
+// 2. PDF EXAMPLES
+// ========================================
+println( "=== 2. Working with PDFs ===" )
+println( "" )
+
+// Using a PDF URL
+pdfUrlMessage = aiMessage( "Summarize this PDF document" )
+    .pdf( "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", "Sample PDF" )
+
+println( "Created message with PDF URL:" )
+println( pdfUrlMessage.getMessages() )
+println( "" )
+
+// Embedding a PDF from file system
+// Note: Uncomment when you have an actual PDF file
+// embedPdfMessage = aiMessage( "Extract key points from this PDF" )
+//     .embedPdf( "./examples/assets/report.pdf", "Monthly Report" )
+//
+// println( "Embedded PDF from file (base64 encoded)" )
+// println( "File path: ./examples/assets/report.pdf" )
+// println( "" )
+
+// ========================================
+// 3. COMBINING MULTIPLE MEDIA
+// ========================================
+println( "=== 3. Combining Multiple Media in One Message ===" )
+println( "" )
+
+// You can chain multiple media types
+multiMediaMessage = aiMessage( "Compare these images and tell me the differences" )
+    .image( "https://example.com/image1.jpg" )
+    .image( "https://example.com/image2.jpg" )
+
+println( "Message with multiple images:" )
+println( "Images chained: image1.jpg and image2.jpg" )
+println( "" )
+
+//cliExit()
+
+// ========================================
+// REAL-WORLD EXAMPLE: Image Analysis
+// ========================================
+println( "=== 5. Real-World Example: Image Analysis with AI ===" )
+println( "" )
+
+// Using a publicly available image for demonstration
+analysisMessage = aiMessage()
+    .system( "You are an expert image analyst. Provide detailed descriptions." )
+    .user( "Describe what you see in this image and identify any text." )
+    .image( "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png" )
+
+println( "Sending image analysis request to AI..." )
+response = aiChat( analysisMessage )
+
+println( "AI Analysis:" )
+println( response )
+println( "" )
+
+// ========================================
+// 6. PRACTICAL TIPS
+// ========================================
+println( "=== 6. Practical Tips ===" )
+println( "" )
+
+println( "📌 Image Methods:" )
+println( "   - image(url, detail) - Use for publicly accessible images" )
+println( "   - embedImage(filePath, detail) - Use for local files (converts to base64)" )
+println( "   - Detail levels: 'auto', 'low' (faster/cheaper), 'high' (more accurate/expensive)" )
+println( "" )
+
+println( "📌 PDF Methods:" )
+println( "   - pdf(url, name) - Use for publicly accessible PDFs" )
+println( "   - embedPdf(filePath, name) - Use for local PDFs (converts to base64)" )
+println( "   - Name parameter is optional but helps AI context" )
+println( "" )
+
+println( "📌 Provider Support:" )
+println( "   - Images: OpenAI (GPT-4o, GPT-4 Vision), Claude (3+), Gemini" )
+println( "   - PDFs: Claude (Opus, Sonnet), OpenAI (via file API)" )
+println( "   - Audio: OpenAI (GPT-4o-audio), Gemini" )
+println( "   - Video: Gemini (1.5-pro, 2.0-flash)" )
+println( "" )
+
+println( "📌 Size Considerations:" )
+println( "   - URLs: Faster, no base64 encoding overhead" )
+println( "   - Embedded: Works offline, but increases payload size" )
+println( "   - Large files may hit token/size limits" )
+println( "" )
+
+println( "=== Example Complete ===" )
+println( "" )
+println( "To try with your own files:" )
+println( "1. Create examples/assets/ folder" )
+println( "2. Add sample files (images, PDFs, audio, video)" )
+println( "3. Uncomment the embedImage/embedPdf examples above" )
+println( "4. Run: boxlang examples/06-multimodal-messages.bxs" )
