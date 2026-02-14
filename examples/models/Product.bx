@@ -4,4 +4,5 @@ class{
     property name="category" type="string";
     property name="inStock" type="boolean";
     property name="features" type="array";
+
 }

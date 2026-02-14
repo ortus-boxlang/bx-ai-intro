@@ -1,0 +1,40 @@
+/**
+ * Example: Using aiChat() with Structured Output
+ *
+ * This example demonstrates how to get typed, structured responses from AI
+ * instead of plain text. The AI will automatically populate your class or struct
+ * with the extracted data.
+ */
+// Example 1: Extract product information into a structured object
+println( "=== Example 1: Product Extraction ===" )
+println( "" )
+
+productDescription = "
+Extract the product information from the following text and return ONLY valid JSON
+matching the Product class structure.
+The UltraBook Pro 15 laptop is available for $1,299.99.
+It's in the Electronics category and currently in stock.
+Key features include: 15-inch display, 16GB RAM, 512GB SSD, and long battery life.
+"
+
+product = aiChat(
+    messages: productDescription,
+    options: {
+		provider: "claude",
+		returnFormat: new models.Product(),
+		logRequestToConsole: false,
+		logResponseToConsole: true
+	}
+)
+
+println( "Extracted Product:" )
+println( "  Title: #product.title#" )
+println( "  Price: $#numberFormat( product.price, '9.99' )#" )
+println( "  Category: #product.category#" )
+println( "  In Stock: #product.inStock ? 'Yes' : 'No'#" )
+println( "  Features:" )
+product.features.each( feature -> println( "    - #feature#" ) )
+
+// ======================================================
+// ======================================================
+// ======================================================
