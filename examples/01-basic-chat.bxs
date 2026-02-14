@@ -1,0 +1,2 @@
+results = aiChat( "What is ColdBox?" )
+println( results )

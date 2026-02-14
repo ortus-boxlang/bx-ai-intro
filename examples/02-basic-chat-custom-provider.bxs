@@ -1,0 +1,11 @@
+// Custom Provider + Default Model: claude-sonnet-4-5
+results = aiChat( "What is ColdBox?", {}, { provider: "claude" } )
+println( results )
+
+// Custom Provider + Model
+// results = aiChat(
+//     "What is ColdBox?",
+//     { model: "claude-3-haiku-20240307"},
+//     { provider: "claude" }
+// )
+// println( results )

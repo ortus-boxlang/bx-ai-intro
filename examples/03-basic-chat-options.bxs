@@ -1,0 +1,19 @@
+// Log Request
+results = aiChat( "What is ColdBox?", {}, { logRequestToConsole: true } )
+println( results )
+
+// Log Response
+// Careful: can potentially log sensitive information, so use with caution
+// results = aiChat( "What is ColdBox?", {}, { logResponseToConsole: true } )
+// println( results )
+
+// All Responses
+// results = aiChat( "What is ColdBox?", {}, { returnFormat: "all" } )
+// println( results )
+
+// Raw Response
+// results = aiChat( "What is ColdBox?", {}, { returnFormat: "raw" } )
+// println( results )
+
+// results = aiChat( "Give me the top 10 features of ColdBox in JSON format", {}, { returnFormat: "json" } )
+// println( results )
