@@ -1,7 +1,7 @@
 println( "🚀 Running Basic Pipeline Example..." )
 
 // Simple pipeline: Message → AI Model → Transform
-result = aiMessage( "Explain AI in one sentence" )
+result = aiMessage( "Explain AI and its usage" )
     .system( "You are a helpful assistant that provides concise explanations." )
     .toDefaultModel()
  	.stream( chunk => {
@@ -11,6 +11,3 @@ result = aiMessage( "Explain AI in one sentence" )
 		var content = chunk.choices?.first()?.delta?.content ?: ""
 		print( content )  // Print each chunk as it arrives
 	} )
-
-println( "🤖 AI Response:" )
-println( result )
