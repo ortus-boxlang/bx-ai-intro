@@ -12,3 +12,17 @@ conversationResponse = aiChat( conversation )
 
 println( "AI Response to conversation:" )
 println( conversationResponse )
+
+cliRead( "Press Enter to continue the conversation..." )
+
+// Add the AI's response to the conversation and continue the dialogue
+conversation = conversation.add( conversationResponse )
+conversation = conversation.user( "How do I use that BIF in my code?" )
+
+println( "=== Continuing the Conversation ==="
+println( conversation )
+
+conversationResponse = aiChat( conversation )
+
+println( "AI Response to follow-up question:" )
+println( conversationResponse )
