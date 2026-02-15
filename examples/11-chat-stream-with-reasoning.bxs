@@ -1,0 +1,37 @@
+
+println( "========================================" )
+println( "Example 11: AI Chat Streaming with Reasoning" )
+println( "========================================" )
+println( "" )
+
+println( "--- Basic Streaming with Reasoning ---" )
+println( "" )
+
+prompt = "Explain why the sky is blue in one sentence"
+println( "👤 User: #prompt#" )
+println( "🤖  AI: " )
+
+reasoningPhase = true
+contentStarted = false
+
+aiChatStream(
+    prompt,
+    ( chunk ) => {
+        var content = chunk.choices?.first()?.delta?.content ?: ""
+        var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
+
+        // During reasoning phase, show a dot for progress
+        if ( reasoning != "" && reasoningPhase ) {
+            print( "." )
+        }
+
+        // When content starts, clear reasoning dots and start response
+        if ( content != "" && !contentStarted ) {
+            println( " ✓ " )
+            contentStarted = true
+            reasoningPhase = false
+        }
+
+        print( content )
+    }
+)
