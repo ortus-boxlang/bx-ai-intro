@@ -1,0 +1,12 @@
+println( "🚀 Running Basic Pipeline Example..." )
+
+// Simple pipeline: Message → AI Model → Transform
+result = aiMessage( "Explain AI in one sentence" )
+    .system( "You are a helpful assistant that provides concise explanations." )
+    .toDefaultModel()
+	 // Transform the response to upper case
+	.transform( r => r.toUpperCase() )
+ 	.run()
+
+println( "🤖 AI Response (Transformed to Upper Case):" )
+println( result )
