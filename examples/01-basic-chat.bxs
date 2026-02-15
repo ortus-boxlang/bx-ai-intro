@@ -1,2 +1,33 @@
+/**
+* Example 01: Basic Chat
+*
+* Learn the fundamentals of making AI chat calls in BoxLang.
+* This example shows the simplest possible way to interact with AI - 
+* just pass a question and get a response.
+*
+* What you'll learn:
+* - How to use the aiChat() BIF for basic conversations
+* - The default provider and model configuration
+* - How to capture and display AI responses
+*/
+println( "========================================" )
+println( "Example 01: Basic Chat" )
+println( "========================================" )
+println( "" )
+
 results = aiChat( "What is ColdBox?" )
 println( results )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "" )
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiChat() is the simplest way to interact with AI" )
+println( "2. Pass a string question as the first argument" )
+println( "3. The response is returned as a string" )
+println( "4. Uses default provider and model from configuration" )
+println( "5. Perfect for quick questions and simple interactions" )
+println( "" )

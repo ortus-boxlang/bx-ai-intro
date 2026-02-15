@@ -1,3 +1,20 @@
+/**
+ * Example 07: Multi-Turn Conversations
+ *
+ * This example demonstrates how to build and maintain multi-turn conversations
+ * with the AI, keeping context across multiple exchanges.
+ *
+ * What you'll learn:
+ * - How to build conversation history with aiMessage()
+ * - How to maintain context across multiple turns
+ * - How to add AI responses back to the conversation
+ */
+
+println( "========================================" )
+println( "Example 07: Multi-Turn Conversations" )
+println( "========================================" )
+println( "" )
+
 // You can also build a conversation with multiple exchanges
 println( "=== Building a Multi-Turn Conversation ===" )
 println( "" )
@@ -19,10 +36,26 @@ cliRead( "Press Enter to continue the conversation..." )
 conversation = conversation.add( conversationResponse )
 conversation = conversation.user( "How do I use that BIF in my code?" )
 
-println( "=== Continuing the Conversation ==="
+println( "=== Continuing the Conversation ===" )
 println( conversation )
 
 conversationResponse = aiChat( conversation )
 
 println( "AI Response to follow-up question:" )
 println( conversationResponse )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Build conversations by chaining .user() and .assistant() calls" )
+println( "2. Use .add() to append AI responses back into the conversation" )
+println( "3. Conversation history gives AI context for better responses" )
+println( "4. System messages set the tone for the entire conversation" )
+println( "5. Multi-turn conversations enable more complex, context-aware interactions" )
+println( "" )
+println( "TIP: Always add AI responses back to the conversation to maintain context!" )
+println( "" )

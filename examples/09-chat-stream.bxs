@@ -1,239 +1,34 @@
-// /**
-// * Example 08: Chat with AI Tools (Function Calling)
-// *
-// * AI Tools enable models to call functions in your code to access real-time data,
-// * perform calculations, and interact with your systems.
-// *
-// * When the AI needs information it doesn't have (like current weather or calculations),
-// * it can automatically call your tools to get the data it needs.
-// */
-// println( "========================================" )
-// println( "Example 08: AI Tools (Function Calling)" )
-// println( "========================================" )
-// println( "" )
-
-// // ============================================================================
-// // Example 1: Simple Weather Tool
-// // ============================================================================
-// println( "--- Example 1: Simple Weather Tool ---" )
-// println( "" )
-
-// // Define a weather tool - simulates getting weather data
-// weatherTool = aiTool(
-//     "get_weather",                           // Tool name (used by AI)
-//     "Get current weather for a location",    // Description (AI reads this to decide when to use it)
-//     ( location ) => {                            // Your callback function
-//         // In real app, you'd call a weather API here
-//         // For demo, we'll simulate the response
-//         return {
-//             "location": arguments.location,
-//             "temperature": 72,
-//             "unit": "fahrenheit",
-//             "condition": "Sunny",
-//             "humidity": 45,
-//             "wind": "5 mph NW"
-//         }
-//     }
-// ).describeLocation( "City name, e.g. Boston, MA" )  // Describe the parameter
-
-// // Use the tool with aiChat
-// result = aiChat(
-//     "What's the weather in Boston?",
-//     { tools: [ weatherTool ] }
-// )
-
-// println( "User: What's the weather in Boston?" )
-// println( "AI: #result#" )
-// println( "" )
-
-// ============================================================================
-// Example 2: Calculator Tool
-// ============================================================================
-println( "--- Example 2: Calculator Tool ---" )
-println( "" )
-
-// Define a calculator tool for math operations
-calcTool = aiTool(
-    "calculate",
-    "Perform mathematical calculations. Use this to evaluate any math expression.",
-    ( operation, a, b ) => {
-        // Simple calculator logic (you can expand this to support more operations)
-		switch ( arguments.operation ) {
-			case "add":
-				return arguments.a + arguments.b
-			case "subtract":
-				return arguments.a - arguments.b
-			case "multiply":
-				return arguments.a * arguments.b
-			case "divide":
-				if ( arguments.b == 0 ) {
-					return "Error: Division by zero"
-				}
-				return arguments.a / arguments.b
-			default:
-				return "Error: Unsupported operation"
-		}
-    }
-).describeOperation( "The math operation to perform: add, subtract, multiply, divide" )
-.describeA( "The first number" )
-.describeB( "The second number" )
-
-// Use the calculator tool
-result = aiChat(
-    "What is 60 divided by 4, and then multiplied by 2?",
-    { tools: [ calcTool ] }
-)
-
-println( "User: What is 60 divided by 4, and then multiplied by 2?" )
-println( "AI: #result#" )
-println( "" )
-
-cliexit()
-
-// ============================================================================
-// Example 3: Multiple Tools Working Together
-// ============================================================================
-println( "--- Example 3: Multiple Tools Working Together ---" )
-println( "" )
-
-// The AI can automatically use multiple tools in sequence to answer complex questions
-result = aiChat(
-    "What's the temperature in Miami, and what's 25% of that number?",
-    {
-        tools: [ weatherTool, calcTool ]
-    }
-)
-
-println( "User: What's the temperature in Miami, and what's 25% of that number?" )
-println( "AI: #result#" )
-println( "" )
-println( "Note: The AI automatically called BOTH tools:" )
-println( "  1. get_weather('Miami') to get the temperature (72°F)" )
-println( "  2. calculate('72 * 0.25') to compute 25%" )
-println( "" )
-
-// ============================================================================
-// Example 4: Product Search Tool (More Realistic)
-// ============================================================================
-println( "--- Example 4: Product Search Tool ---" )
-println( "" )
-
-// Define a product search tool with multiple parameters
-searchTool = aiTool(
-    "search_products",
-    "Search the product catalog by query, category, and price range",
-    ( args ) => {
-        // Simulate database search
-        return [
-            {
-                "name": "Wireless Mouse",
-                "category": args.category ?: "electronics",
-                "price": 29.99,
-                "inStock": true
-            },
-            {
-                "name": "Bluetooth Keyboard",
-                "category": args.category ?: "electronics",
-                "price": 49.99,
-                "inStock": true
-            },
-            {
-                "name": "USB-C Cable",
-                "category": args.category ?: "electronics",
-                "price": 12.99,
-                "inStock": false
-            }
-        ]
-    }
-)
-    .describeQuery( "Search keywords, e.g. 'wireless', 'keyboard'" )
-    .describeCategory( "Product category (optional): electronics, office, accessories" )
-    .describeLimit( "Maximum number of results to return (default: 10)" )
-
-// Use the search tool
-result = aiChat(
-    "Find me some wireless computer accessories under $50",
-    { tools: [ searchTool ] }
-)
-
-println( "User: Find me some wireless computer accessories under $50" )
-println( "AI: #result#" )
-println( "" )
-
-// ============================================================================
-// Example 5: Tool with Error Handling
-// ============================================================================
-println( "--- Example 5: Tool with Error Handling ---" )
-println( "" )
-
-// Define a tool that validates input and handles errors gracefully
-userLookupTool = aiTool(
-    "lookup_user",
-    "Find user information by email address",
-    ( args ) => {
-        // Validate input
-        if ( !structKeyExists( args, "email" ) || args.email == "" ) {
-            return {
-                "found": false,
-                "error": "Email address is required"
-            }
-        }
-
-        // Simulate database lookup
-        // In real app, you'd query your database here
-        var users = {
-            "john@example.com": {
-                "id": 1,
-                "name": "John Doe",
-                "email": "john@example.com",
-                "status": "active"
-            },
-            "jane@example.com": {
-                "id": 2,
-                "name": "Jane Smith",
-                "email": "jane@example.com",
-                "status": "active"
-            }
-        }
-
-        if ( structKeyExists( users, args.email ) ) {
-            return {
-                "found": true,
-                "user": users[ args.email ]
-            }
-        } else {
-            return {
-                "found": false,
-                "message": "No user found with email: #args.email#"
-            }
-        }
-    }
-).describeEmail( "The user's email address" )
-
-// Use the lookup tool
-result = aiChat(
-    "Look up the user with email john@example.com",
-    { tools: [ userLookupTool ] }
-)
-
-println( "User: Look up the user with email john@example.com" )
-println( "AI: #result#" )
-println( "" )
-
-// ============================================================================
-// Key Takeaways
-// ============================================================================
+/**
+* Example 09: Chat with AI Streaming
+*
+* Streaming allows you to receive AI responses in real-time as they're generated,
+* instead of waiting for the complete response. This creates a more responsive
+* user experience, especially for longer responses.
+*
+* Perfect for: Chat interfaces, progress indicators, live updates
+*/
 println( "========================================" )
-println( "KEY TAKEAWAYS:" )
+println( "Example 09: AI Chat Streaming" )
 println( "========================================" )
-println( "1. Tools let AI access real-time data and perform actions" )
-println( "2. Use aiTool(name, description, callback) to create tools" )
-println( "3. Use .describe{ParameterName}() to document parameters" )
-println( "4. AI automatically determines when to call tools" )
-println( "5. Multiple tools can work together to solve complex queries" )
-println( "6. Always handle errors gracefully in your tool callbacks" )
-println( "7. Return structured data (objects/arrays) for best results" )
 println( "" )
-println( "TIP: The AI reads your tool description to decide when to use it." )
-println( "     Make descriptions clear and specific!" )
+
+// ============================================================================
+// Example 1: Basic Streaming
+// ============================================================================
+println( "--- Example 1: Basic Streaming ---" )
+println( "" )
+
+println( "User: Tell me a short joke about programming" )
+println( "AI: " )
+
+// Stream the response - each chunk is printed as it arrives
+aiChatStream(
+    "Tell me a short joke about programming",
+    ( chunk ) => {
+        // This callback is called for each chunk of text
+        print( chunk )
+    }
+)
+
+println( "" )
 println( "" )

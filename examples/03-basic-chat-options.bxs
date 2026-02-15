@@ -1,20 +1,63 @@
+/**
+ * Example 03: Chat Options and Logging
+ *
+ * Learn how to configure chat options for debugging and different response formats.
+ * This example shows how to enable request and response logging and use different
+ * return formats to get more information from your AI calls.
+ *
+ * What you'll learn:
+ * - How to enable request and response logging
+ * - Different return formats (all, raw, json)
+ * - How to get structured data responses
+ */
+
+println( "========================================" )
+println( "Example 03: Chat Options & Logging" )
+println( "========================================" )
+println( "" )
+
 // Log Request
+println( "--- Logging Request to Console ---" )
 results = aiChat( "What is ColdBox?", {}, { logRequestToConsole: true } )
 println( results )
+println( "" )
 
-// Log Response
-// Careful: can potentially log sensitive information, so use with caution
-// results = aiChat( "What is ColdBox?", {}, { logResponseToConsole: true } )
-// println( results )
+// Log Response - shows the full API response (use with caution)
+println( "--- Logging Response to Console ---" )
+println( "Careful: can log sensitive information" )
+results = aiChat( "What is ColdBox?", {}, { logResponseToConsole: true } )
+println( results )
+println( "" )
 
-// All Responses
-// results = aiChat( "What is ColdBox?", {}, { returnFormat: "all" } )
-// println( results )
+// All Responses - returns complete response object with metadata
+println( "--- Getting All Response Data ---" )
+results = aiChat( "What is ColdBox?", {}, { returnFormat: "all" } )
+println( results )
+println( "" )
 
-// Raw Response
-// results = aiChat( "What is ColdBox?", {}, { returnFormat: "raw" } )
-// println( results )
+// Raw Response - returns the raw API response
+println( "--- Getting Raw Response ---" )
+results = aiChat( "What is ColdBox?", {}, { returnFormat: "raw" } )
+println( results )
+println( "" )
 
-// JSON, XML Response
-// results = aiChat( "Give me the top 10 features of ColdBox in JSON format", {}, { returnFormat: "json" } )
-// println( results )
+// JSON Response - attempts to parse response as JSON
+println( "--- Getting JSON Response ---" )
+results = aiChat( "Give me the top 3 features of ColdBox in JSON format", {}, { returnFormat: "json" } )
+println( results )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use logRequestToConsole to see what is sent to the AI" )
+println( "2. Use logResponseToConsole to see the full API response" )
+println( "3. returnFormat: 'all' gives you metadata like token usage" )
+println( "4. returnFormat: 'json' automatically parses JSON responses" )
+println( "5. Options are passed as the third parameter to aiChat()" )
+println( "" )
+println( "TIP: Use logging during development to debug your AI requests!" )
+println( "" )

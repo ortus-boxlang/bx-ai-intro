@@ -1,10 +1,21 @@
 /**
- * Example: Using aiChat() with Structured Output
+ * Example 04: Chat with Structured Output
  *
  * This example demonstrates how to get typed, structured responses from AI
  * instead of plain text. The AI will automatically populate your class or struct
  * with the extracted data.
+ *
+ * What you'll learn:
+ * - How to get structured data back from AI instead of text
+ * - How to use BoxLang classes as return formats
+ * - How to validate and work with typed responses
  */
+
+println( "========================================" )
+println( "Example 04: Structured Output" )
+println( "========================================" )
+println( "" )
+
 // Example 1: Extract product information into a structured object
 println( "=== Example 1: Product Extraction ===" )
 println( "" )
@@ -33,3 +44,19 @@ println( "  Category: #product.category#" )
 println( "  In Stock: #product.inStock ? 'Yes' : 'No'#" )
 println( "  Features:" )
 product.features.each( feature -> println( "    - #feature#" ) )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Pass a class instance to returnFormat for typed responses" )
+println( "2. AI automatically parses and populates the object properties" )
+println( "3. Structured output eliminates manual parsing of text responses" )
+println( "4. Use classes to define the exact schema you want back" )
+println( "5. Works great for extracting data from unstructured text" )
+println( "" )
+println( "TIP: Define clear class structures to get consistent, typed data from AI!" )
+println( "" )

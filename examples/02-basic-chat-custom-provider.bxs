@@ -1,11 +1,45 @@
+/**
+* Example 02: Basic Chat with Custom Provider
+*
+* Learn how to specify different AI providers and models for your chats.
+* This example demonstrates how to override the default configuration
+* to use specific providers like Claude, OpenAI, or others.
+*
+* What you'll learn:
+* - How to specify a custom provider in aiChat()
+* - How to select specific AI models
+* - Provider-specific model options
+*/
+println( "========================================" )
+println( "Example 02: Custom Provider & Model" )
+println( "========================================" )
+println( "" )
+
 // Custom Provider + Default Model: claude-sonnet-4-5
+println( "--- Using Claude Provider with Default Model ---" )
 results = aiChat( "What is ColdBox?", {}, { provider: "claude" } )
 println( results )
+println( "" )
 
-// Custom Provider + Model
-// results = aiChat(
-//     "What is ColdBox?",
-//     { model: "claude-3-haiku-20240307"},
-//     { provider: "claude" }
-// )
-// println( results )
+// Custom Provider + Specific Model
+println( "--- Using Claude with Specific Model ---" )
+results = aiChat(
+    "What is ColdBox?",
+    { model: "claude-3-haiku-20240307"},
+    { provider: "claude" }
+)
+println( results )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "" )
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use the third argument to specify provider options" )
+println( "2. Set provider: 'claude', 'openai', etc. to switch providers" )
+println( "3. Use the second argument to specify model and parameters" )
+println( "4. Different providers support different models" )
+println( "5. Choose models based on speed, cost, and capability needs" )
+println( "" )
