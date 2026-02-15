@@ -7,7 +7,6 @@
 * When the AI needs information it doesn't have (like current weather or calculations),
 * it can automatically call your tools to get the data it needs.
 */
-
 println( "========================================" )
 println( "Example 08: AI Tools (Function Calling)" )
 println( "========================================" )
@@ -47,8 +46,6 @@ println( "User: What's the weather in Boston?" )
 println( "AI: #result#" )
 println( "" )
 
-cliExit()
-
 // ============================================================================
 // Example 2: Calculator Tool
 // ============================================================================
@@ -58,25 +55,41 @@ println( "" )
 // Define a calculator tool for math operations
 calcTool = aiTool(
     "calculate",
-    "Perform mathematical calculations. Use this to evaluate any math expression.",
-    ( expression ) => {
-        // In real app, use a safe math evaluator
-        // For demo, using BoxLang's evaluate() function
-        try {
-            return evaluate( arguments.expression )
-        } catch( any e ) {
-            return "Error: Invalid expression"
-        }
+    "Perform mathematical calculations including temperature conversions",
+    ( operation, a, b ) => {
+        // Simple calculator logic
+		switch ( arguments.operation ) {
+			case "add":
+				return arguments.a + arguments.b
+			case "subtract":
+				return arguments.a - arguments.b
+			case "multiply":
+				return arguments.a * arguments.b
+			case "divide":
+				if ( arguments.b == 0 ) {
+					return "Error: Division by zero"
+				}
+				return arguments.a / arguments.b
+			case "fahrenheit_to_celsius":
+				return round( (arguments.a - 32) * 5 / 9 )
+			case "celsius_to_fahrenheit":
+				return round( (arguments.a * 9 / 5) + 32 )
+			default:
+				return "Error: Unsupported operation"
+		}
     }
-).describeExpression( "Mathematical expression to evaluate, e.g. 15 * 23 + 7" )
+)
+.describeOperation( "The math operation: add, subtract, multiply, divide, fahrenheit_to_celsius, celsius_to_fahrenheit" )
+.describeA( "The first number (or temperature value for conversions)" )
+.describeB( "The second number (not needed for temperature conversions)" )
 
 // Use the calculator tool
 result = aiChat(
-    "What is 25% of 156?",
+    "What is 60 divided by 4, and then multiplied by 2?",
     { tools: [ calcTool ] }
 )
 
-println( "User: What is 25% of 156?" )
+println( "User: What is 60 divided by 4, and then multiplied by 2?" )
 println( "AI: #result#" )
 println( "" )
 
@@ -88,125 +101,12 @@ println( "" )
 
 // The AI can automatically use multiple tools in sequence to answer complex questions
 result = aiChat(
-    "What's the temperature in Miami, and what's 25% of that number?",
-    {
-        tools: [ weatherTool, calcTool ]
-    }
+	"What's the weather in Boston, and what would it be in Celsius?
+	Use the weather tool to get the temperature in Fahrenheit, then use the calculator tool to convert it to Celsius.",
+	{ tools: [ weatherTool, calcTool ] }
 )
 
-println( "User: What's the temperature in Miami, and what's 25% of that number?" )
-println( "AI: #result#" )
-println( "" )
-println( "Note: The AI automatically called BOTH tools:" )
-println( "  1. get_weather('Miami') to get the temperature (72°F)" )
-println( "  2. calculate('72 * 0.25') to compute 25%" )
-println( "" )
-
-// ============================================================================
-// Example 4: Product Search Tool (More Realistic)
-// ============================================================================
-println( "--- Example 4: Product Search Tool ---" )
-println( "" )
-
-// Define a product search tool with multiple parameters
-searchTool = aiTool(
-    "search_products",
-    "Search the product catalog by query, category, and price range",
-    ( args ) => {
-        // Simulate database search
-        return [
-            {
-                "name": "Wireless Mouse",
-                "category": args.category ?: "electronics",
-                "price": 29.99,
-                "inStock": true
-            },
-            {
-                "name": "Bluetooth Keyboard",
-                "category": args.category ?: "electronics",
-                "price": 49.99,
-                "inStock": true
-            },
-            {
-                "name": "USB-C Cable",
-                "category": args.category ?: "electronics",
-                "price": 12.99,
-                "inStock": false
-            }
-        ]
-    }
-)
-    .describeQuery( "Search keywords, e.g. 'wireless', 'keyboard'" )
-    .describeCategory( "Product category (optional): electronics, office, accessories" )
-    .describeLimit( "Maximum number of results to return (default: 10)" )
-
-// Use the search tool
-result = aiChat(
-    "Find me some wireless computer accessories under $50",
-    { tools: [ searchTool ] }
-)
-
-println( "User: Find me some wireless computer accessories under $50" )
-println( "AI: #result#" )
-println( "" )
-
-// ============================================================================
-// Example 5: Tool with Error Handling
-// ============================================================================
-println( "--- Example 5: Tool with Error Handling ---" )
-println( "" )
-
-// Define a tool that validates input and handles errors gracefully
-userLookupTool = aiTool(
-    "lookup_user",
-    "Find user information by email address",
-    ( args ) => {
-        // Validate input
-        if ( !structKeyExists( args, "email" ) || args.email == "" ) {
-            return {
-                "found": false,
-                "error": "Email address is required"
-            }
-        }
-
-        // Simulate database lookup
-        // In real app, you'd query your database here
-        var users = {
-            "john@example.com": {
-                "id": 1,
-                "name": "John Doe",
-                "email": "john@example.com",
-                "status": "active"
-            },
-            "jane@example.com": {
-                "id": 2,
-                "name": "Jane Smith",
-                "email": "jane@example.com",
-                "status": "active"
-            }
-        }
-
-        if ( structKeyExists( users, args.email ) ) {
-            return {
-                "found": true,
-                "user": users[ args.email ]
-            }
-        } else {
-            return {
-                "found": false,
-                "message": "No user found with email: #args.email#"
-            }
-        }
-    }
-).describeEmail( "The user's email address" )
-
-// Use the lookup tool
-result = aiChat(
-    "Look up the user with email john@example.com",
-    { tools: [ userLookupTool ] }
-)
-
-println( "User: Look up the user with email john@example.com" )
+println( "User: What's the weather in Boston, and what would it be in Celsius?" )
 println( "AI: #result#" )
 println( "" )
 
@@ -221,8 +121,6 @@ println( "2. Use aiTool(name, description, callback) to create tools" )
 println( "3. Use .describe{ParameterName}() to document parameters" )
 println( "4. AI automatically determines when to call tools" )
 println( "5. Multiple tools can work together to solve complex queries" )
-println( "6. Always handle errors gracefully in your tool callbacks" )
-println( "7. Return structured data (objects/arrays) for best results" )
 println( "" )
 println( "TIP: The AI reads your tool description to decide when to use it." )
 println( "     Make descriptions clear and specific!" )
