@@ -13,6 +13,8 @@ println( "🤖  AI: " )
 
 reasoningPhase = true
 contentStarted = false
+dotCount = 0
+thinkingStates = [ "🤔 Thinking.  ", "🤔 Thinking.. ", "🤔 Thinking..." ]
 
 aiChatStream(
     prompt,
@@ -20,14 +22,16 @@ aiChatStream(
         var content = chunk.choices?.first()?.delta?.content ?: ""
         var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
 
-        // During reasoning phase, show a dot for progress
+        // During reasoning phase, show animated thinking indicator
         if ( reasoning != "" && reasoningPhase ) {
-            print( "." )
+            dotCount++
+            var state = thinkingStates[ ( dotCount % 3 ) + 1 ]
+            print( "#char(13)##state#" )  // char(13) is carriage return
         }
 
-        // When content starts, clear reasoning dots and start response
+        // When content starts, clear thinking indicator and start response
         if ( content != "" && !contentStarted ) {
-            println( " ✓ " )
+            print( "#char(13)#               #char(13)#" )  // Clear the thinking line
             contentStarted = true
             reasoningPhase = false
         }
