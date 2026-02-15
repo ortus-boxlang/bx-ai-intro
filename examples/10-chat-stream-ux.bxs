@@ -1,11 +1,14 @@
 /**
-* Example 09: Chat with AI Streaming
+* Example 10: Chat with AI Streaming and UX Enhancements
 *
-* Streaming allows you to receive AI responses in real-time as they're generated,
-* instead of waiting for the complete response. This creates a more responsive
-* user experience, especially for longer responses.
+* This example shows how to enhance streaming with visual indicators,
+* model information, and better user experience patterns.
 *
-* Perfect for: Chat interfaces, progress indicators, live updates
+* What you'll learn:
+* - How to show model information on the first chunk
+* - How to add visual indicators (emojis) for better UX
+* - How to track state during streaming
+* - How to handle reasoning and content phases
 */
 println( "========================================" )
 println( "Example 10: AI Chat Streaming with UX Enhancements" )
@@ -56,6 +59,20 @@ aiChatStream(
     }
 )
 
+println( "" )
+println( "" )
+
 // ============================================================================
 // Key Takeaways
 // ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Add visual indicators (emojis) to improve user experience" )
+println( "2. Show model information on first chunk for transparency" )
+println( "3. Track state (hasStarted, isThinking) to manage UX transitions" )
+println( "4. Use chunk.model to display which AI model is responding" )
+println( "5. Visual feedback makes streaming more engaging and informative" )
+println( "" )
+println( "TIP: Good UX during streaming keeps users informed about what's happening!" )
+println( "" )

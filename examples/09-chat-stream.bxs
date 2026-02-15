@@ -32,3 +32,21 @@ aiChatStream(
         print( content )
     }
 )
+
+println( "" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use aiChatStream() to receive AI responses in real-time" )
+println( "2. Pass a callback function that receives each chunk as it arrives" )
+println( "3. Extract content using chunk.choices?.first()?.delta?.content" )
+println( "4. Streaming creates a more responsive user experience" )
+println( "5. Perfect for chat interfaces and long-running AI responses" )
+println( "" )
+println( "TIP: Streaming starts displaying results immediately instead of waiting!" )
+println( "" )

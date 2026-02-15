@@ -1,4 +1,16 @@
-
+/**
+* Example 11: Chat Streaming with Reasoning Display
+*
+* Some AI models (like o1) perform internal reasoning before responding.
+* This example shows how to display animated thinking indicators during
+* the reasoning phase for a better user experience.
+*
+* What you'll learn:
+* - How to detect and display reasoning phases
+* - How to create animated thinking indicators
+* - How to use carriage returns for in-place updates
+* - How to transition from thinking to response
+*/
 println( "========================================" )
 println( "Example 11: AI Chat Streaming with Reasoning" )
 println( "========================================" )
@@ -39,3 +51,21 @@ aiChatStream(
         print( content )
     }
 )
+
+println( "" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Some models provide reasoning phases before final responses" )
+println( "2. Use chunk.choices?.first()?.delta?.reasoning to detect reasoning" )
+println( "3. Animated indicators (🤔 Thinking...) improve user experience" )
+println( "4. Use char(13) (carriage return) for in-place text updates" )
+println( "5. Clear thinking indicators when actual content starts" )
+println( "" )
+println( "TIP: Reasoning display shows users the AI is 'thinking' through the problem!" )
+println( "" )

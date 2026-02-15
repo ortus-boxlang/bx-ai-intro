@@ -1,12 +1,43 @@
+/**
+* Example 13: Basic Pipeline
+*
+* Pipelines allow you to chain AI operations together in a fluent way.
+* This example shows the simplest pipeline: message → model → result.
+*
+* What you'll learn:
+* - How to use .toDefaultModel() to create a pipeline
+* - How to chain operations with fluent API
+* - How to run a pipeline with .run()
+*/
+println( "========================================" )
+println( "Example 13: Basic Pipeline" )
+println( "========================================" )
+println( "" )
+
 println( "🚀 Running Basic Pipeline Example..." )
+println( "" )
 
 // Simple pipeline: Message → AI Model → Transform
 result = aiMessage( "Explain AI in one sentence" )
     .system( "You are a helpful assistant that provides concise explanations." )
     .toDefaultModel()
-	 // Transform the response to upper case
-	.transform( r => r.toUpperCase() )
  	.run()
 
-println( "🤖 AI Response (Transformed to Upper Case):" )
+println( "🤖 AI Response:" )
 println( result )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use .toDefaultModel() to convert messages into runnable pipelines" )
+println( "2. Fluent API allows chaining operations: message.toModel().run()" )
+println( "3. Pipelines make code more readable and composable" )
+println( "4. Call .run() to execute the pipeline and get results" )
+println( "5. Pipelines can be extended with transformers and other operations" )
+println( "" )
+println( "TIP: Pipelines enable powerful composition of AI operations!" )
+println( "" )
