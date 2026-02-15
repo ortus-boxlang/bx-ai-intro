@@ -13,22 +13,165 @@ println( "========================================" )
 println( "" )
 
 // ============================================================================
-// Example 1: Basic Streaming
+// Example 1: Basic Streaming with UX Enhancements
 // ============================================================================
-println( "--- Example 1: Basic Streaming ---" )
+println( "--- Example 1: Basic Streaming with UX Enhancements ---" )
 println( "" )
 
-println( "User: Tell me a short joke about programming" )
-println( "AI: " )
+println( "User: Tell me a long joke about programming" )
+print( "AI: " )
+
+var isThinking = true
+var hasStarted = false
 
 // Stream the response - each chunk is printed as it arrives
 aiChatStream(
-    "Tell me a short joke about programming",
+    "Tell me a long joke about programming",
     ( chunk ) => {
-        // This callback is called for each chunk of text
-        print( chunk )
+        // Show model info on first chunk
+        if ( !hasStarted ) {
+            print( "[#chunk.model#] " )
+            hasStarted = true
+        }
+
+        // Extract content and reasoning
+        var content = chunk.choices?.first()?.delta?.content ?: ""
+        var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
+
+        // Show thinking indicator during reasoning phase
+        if ( reasoning != "" && isThinking ) {
+            print( "💭 " )
+            isThinking = false
+        }
+
+        // When actual content starts, clear thinking indicator and show response
+        if ( content != "" && !isThinking ) {
+            isThinking = false  // Already cleared
+        }
+
+        // Print the actual content
+        print( content )
     }
 )
 
 println( "" )
+println( "" )
+
+// ============================================================================
+// Example 2: Show Reasoning Progress
+// ============================================================================
+println( "--- Example 2: Show Reasoning Progress ---" )
+println( "" )
+
+println( "User: Explain why the sky is blue in one sentence" )
+print( "AI: " )
+
+var reasoningPhase = true
+var contentStarted = false
+
+aiChatStream(
+    "Explain why the sky is blue in one sentence",
+    ( chunk ) => {
+        var content = chunk.choices?.first()?.delta?.content ?: ""
+        var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
+
+        // During reasoning phase, show a dot for progress
+        if ( reasoning != "" && reasoningPhase ) {
+            print( "." )
+        }
+
+        // When content starts, clear reasoning dots and start response
+        if ( content != "" && !contentStarted ) {
+            print( " ✓ " )
+            contentStarted = true
+            reasoningPhase = false
+        }
+
+        print( content )
+    }
+)
+
+println( "" )
+println( "" )
+
+// ============================================================================
+// Example 3: Elapsed Time Display
+// ============================================================================
+println( "--- Example 3: Elapsed Time Display ---" )
+println( "" )
+
+println( "User: Write a haiku about coffee" )
+print( "AI: " )
+
+var startTime = getTickCount()
+var firstContentTime = 0
+
+aiChatStream(
+    "Write a haiku about coffee",
+    ( chunk ) => {
+        var content = chunk.choices?.first()?.delta?.content ?: ""
+
+        // Track time to first content
+        if ( content != "" && firstContentTime == 0 ) {
+            firstContentTime = getTickCount()
+            var timeToFirst = firstContentTime - startTime
+            print( "[#timeToFirst#ms] " )
+        }
+
+        print( content )
+    }
+)
+
+var totalTime = getTickCount() - startTime
+println( "" )
+println( "⏱️  Total time: #totalTime#ms | Time to first token: #firstContentTime - startTime#ms" )
+println( "" )
+
+// ============================================================================
+// Example 4: Chunk Counter
+// ============================================================================
+println( "--- Example 4: Chunk Counter with Live Stats ---" )
+println( "" )
+
+println( "User: Count from 1 to 3" )
+print( "AI: " )
+
+var totalChunks = 0
+var contentChunks = 0
+var reasoningChunks = 0
+
+aiChatStream(
+    "Count from 1 to 3",
+    ( chunk ) => {
+        totalChunks++
+
+        var content = chunk.choices?.first()?.delta?.content ?: ""
+        var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
+
+        if ( reasoning != "" ) reasoningChunks++
+        if ( content != "" ) contentChunks++
+
+        print( content )
+    }
+)
+
+println( "" )
+println( "📊 Stats: Total chunks: #totalChunks# | Reasoning: #reasoningChunks# | Content: #contentChunks#" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Chunks contain 'reasoning' tokens before 'content' starts" )
+println( "2. Show progress indicators during reasoning phase" )
+println( "3. Display model/provider info from first chunk" )
+println( "4. Track timing metrics for user feedback" )
+println( "5. Chunks have: choices[].delta.content and choices[].delta.reasoning" )
+println( "6. Use visual indicators (dots, emojis) for better UX" )
+println( "" )
+println( "TIP: The initial delay is the AI 'thinking' (reasoning tokens)." )
+println( "     Show users that something is happening!" )
 println( "" )
