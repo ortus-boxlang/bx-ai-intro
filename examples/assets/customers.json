@@ -1,0 +1,90 @@
+{
+  "customers": [
+    {
+      "id": "C001",
+      "name": "John Smith",
+      "email": "john.smith@example.com",
+      "accountType": "Premium",
+      "joinDate": "2023-01-15",
+      "totalOrders": 47,
+      "lifetimeValue": 12450.00,
+      "preferences": {
+        "notifications": true,
+        "newsletter": true
+      },
+      "recentActivity": [
+        {
+          "date": "2024-02-10",
+          "action": "Purchase",
+          "item": "Wireless Headphones",
+          "amount": 299.99
+        },
+        {
+          "date": "2024-02-05",
+          "action": "Support Ticket",
+          "issue": "Shipping delay inquiry",
+          "status": "Resolved"
+        }
+      ]
+    },
+    {
+      "id": "C002",
+      "name": "Sarah Johnson",
+      "email": "sarah.j@example.com",
+      "accountType": "Standard",
+      "joinDate": "2023-06-20",
+      "totalOrders": 12,
+      "lifetimeValue": 3200.00,
+      "preferences": {
+        "notifications": false,
+        "newsletter": true
+      },
+      "recentActivity": [
+        {
+          "date": "2024-02-12",
+          "action": "Browse",
+          "category": "Electronics"
+        },
+        {
+          "date": "2024-01-28",
+          "action": "Purchase",
+          "item": "Smart Watch",
+          "amount": 399.99
+        }
+      ]
+    },
+    {
+      "id": "C003",
+      "name": "Michael Chen",
+      "email": "m.chen@example.com",
+      "accountType": "Premium",
+      "joinDate": "2022-11-03",
+      "totalOrders": 89,
+      "lifetimeValue": 28900.00,
+      "preferences": {
+        "notifications": true,
+        "newsletter": true
+      },
+      "recentActivity": [
+        {
+          "date": "2024-02-14",
+          "action": "Purchase",
+          "item": "Laptop Pro 16",
+          "amount": 2499.99
+        },
+        {
+          "date": "2024-02-10",
+          "action": "Review",
+          "item": "Wireless Mouse",
+          "rating": 5
+        }
+      ]
+    }
+  ],
+  "productKnowledge": {
+    "categories": ["Electronics", "Computers", "Accessories", "Audio", "Smart Home"],
+    "returnPolicy": "30-day money-back guarantee on all products",
+    "shippingInfo": "Free shipping on orders over $50. Standard shipping takes 3-5 business days.",
+    "supportHours": "Monday-Friday 9am-6pm EST, Weekend support via email only"
+  }
+}

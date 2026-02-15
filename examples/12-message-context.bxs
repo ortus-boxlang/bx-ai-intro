@@ -1,0 +1,80 @@
+/**
+ * Example 12: Message Context & Binding Parameters
+ *
+ * This example demonstrates using message context and binding parameters
+ * to inject data into AI prompts - a "poor man's RAG" approach.
+ *
+ * We'll load customer data from a JSON file and use it to personalize
+ * an AI conversation using both binding parameters and message context.
+ */
+
+println( "=".repeat( 80 ) )
+println( "Example 12: Message Context & Binding Parameters" )
+println( "=".repeat( 80 ) )
+println( "" )
+
+// Load customer database (JSON file simulating a database)
+println( "📂 Loading customer database..." )
+dbData = jsonDeserialize( fileRead( "./assets/customers.json" ) )
+println( "✅ Loaded #dbData.customers.len()# customers" )
+println( "" )
+
+// Look up a specific customer
+targetCustomerId = "C001"
+println( "🔍 Looking up customer: #targetCustomerId#" )
+
+customer = dbData.customers.findFirst( c => c.id == targetCustomerId, {} )
+println( "✅ Found: #customer.name# (#customer.accountType#)" )
+println( "" )
+
+// Create an AI message with context and bindings
+println( "🎯 Creating message with context and bindings..." )
+println( "" )
+
+// =============================================================== //
+// =============================================================== //
+
+message = aiMessage()
+    .system(
+        "You are an AI customer service agent.
+        Use the customer data to personalize your response.
+        Customer Context: ${context}"
+    )
+    .user( "Hi, I'm ${customerName}. I need help with my recent order. Can you check my account?" )
+	// Inject customer data as context (complex structured data)
+	.mergeContext( {
+		"customer": customer,
+		"recentActivity": customer.recentActivity,
+		"companyPolicies": {
+			"returnPolicy": dbData.productKnowledge.returnPolicy,
+			"shippingInfo": dbData.productKnowledge.shippingInfo
+		}
+	} )
+	// Add binding parameters (simple variable substitution)
+	.bind({
+    	"customerName": customer.name
+	})
+
+println( "📦 Injected Data:" )
+println( "   - Context: Customer profile, recent activity, and policies" )
+println( "   - Binding: customerName = '#customer.name#'" )
+println( "" )
+
+// Send to AI
+println( "🚀 Sending to AI..." )
+response = aiChat( message )
+
+println( "🤖 AI Response:" )
+println( response )
+println( "" )
+
+println( "=".repeat( 80 ) )
+println( "✨ What happened:" )
+println( "" )
+println( "1️⃣  Loaded customer data from JSON file (simulated database)" )
+println( "2️⃣  Used .mergeContext() to inject structured data as ${context}" )
+println( "3️⃣  Used .bind() for simple variable substitution (${customerName})" )
+println( "4️⃣  AI received personalized context and responded accordingly" )
+println( "" )
+println( "📚 Learn more: https://ai.ortusbooks.com/main-components/messages/message-context" )
+println( "=".repeat( 80 ) )
