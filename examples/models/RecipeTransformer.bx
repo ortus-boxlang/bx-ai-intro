@@ -1,0 +1,42 @@
+/**
+ * Custom Transformer: Simple Recipe Formatter
+ *
+ * A basic transformer that demonstrates how to extend BaseTransformer.
+ * Formats recipe JSON data into readable text.
+ */
+import bxModules.bxai.models.transformers.BaseTransformer;
+
+class extends="BaseTransformer" {
+
+	/**
+	 * Transform recipe data into formatted text
+	 *
+	 * @input Recipe data (struct or JSON string)
+	 * @return Formatted recipe text
+	 */
+	public string function transform( required any input ) {
+		// Parse if string
+		var recipe = isSimpleValue( arguments.input ) ? jsonDeserialize( arguments.input ) : arguments.input
+		var output = ""
+
+		// Title
+		output &= "🍳 " & recipe.name & char( 10 )
+		output &= "⏱️  Prep: " & ( recipe.prepTime ?: "N/A" ) & " | Cook: " & ( recipe.cookTime ?: "N/A" ) & char( 10 )
+		output &= char( 10 )
+
+		// Ingredients
+		output &= "Ingredients:" & char( 10 )
+		recipe.ingredients.each( item => {
+			output &= "  • " & item.amount & " " & item.unit & " " & item.name & char( 10 )
+		} )
+		output &= char( 10 )
+
+		// Instructions
+		output &= "Instructions:" & char( 10 )
+		recipe.instructions.each( ( step, idx ) => {
+			output &= "  " & (idx + 1) & ". " & step & char( 10 )
+		} )
+
+		return output
+	}
+}

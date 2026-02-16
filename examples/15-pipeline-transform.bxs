@@ -1,0 +1,55 @@
+/**
+ * Example 16: Pipelines with Transformers
+ *
+ * Transformers allow you to process and transform AI responses in a pipeline.
+ * This example combines a custom transformer with a built-in one.
+ *
+ * What you'll learn:
+ * - How to use aiTransform() to chain transformations
+ * - How to create custom transformers
+ * - How to combine built-in and custom transformers in a pipeline
+ */
+// Import the custom transformer
+import models.RecipeTransformer
+
+println( "========================================" )
+println( "Example 15: Pipelines with Transformers" )
+println( "========================================" )
+println( "" )
+
+// Request recipe as JSON from AI
+prompt = "Generate a recipe for Chocolate Chip Cookies in JSON format with: name, prepTime, cookTime, servings,
+ingredients (array with amount, unit, name), instructions (array), and nutrition (calories, protein, carbs, fat).
+Return ONLY valid JSON."
+
+// Pipeline: AI Response → Extract JSON → Format with Custom Transformer
+result = aiMessage( prompt )
+	.system( "You are a culinary expert. Return ONLY valid JSON, no markdown or extra text." )
+	.toDefaultModel()
+	// Built-in JSON extractor
+	.asJSON()
+	// Custom formatter
+	.to( aiTransform( new RecipeTransformer() ) )
+	// Custom Lambda for final tweaks
+	.transform( formattedRecipe => {
+		// Add a fun header to the formatted recipe
+		return "🍪 Here's your delicious recipe for Chocolate Chip Cookies! 🍪" & char( 10 ) & char( 10 ) & formattedRecipe
+	} )
+	.run()
+
+println( result )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use .to() to chain transformers in a pipeline" )
+println( "2. Built-in transformers: json, xml, code, textCleaner" )
+println( "3. Create custom transformers by extending BaseTransformer" )
+println( "4. Transformers process data between AI and final output" )
+println( "" )
+println( "TIP: Pipelines with transformers enable powerful data processing!" )
+println( "" )

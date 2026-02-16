@@ -1,5 +1,20 @@
 # BoxLang AI Module - Presentation Examples
 
+## BoxLang Syntax
+
+- BoxLang is a modern dynamic JVM language with CFML-like syntax. It has its own runtime and features, but CFML developers will find the syntax familiar.
+- Scripts (.bxs) can be written directly without class wrappers, similar to Python or JavaScript.
+- String interpolation supports both `#var#` styles.
+- Functional array operations (map, filter) are available.
+- The Elvis operator (`?:`) provides default values.
+- Null-safe navigation (`?.`) prevents errors when accessing nested properties.
+- Closures and lambdas are supported for functional programming patterns.
+- Don't use `var` on scripts unless they are inside functions
+- Always add spacing for legibility (e.g., around operators, after commas, [],(), etc.).
+
+MCP Server: https://boxlang.ortusbooks.com/~gitbook/mcp
+AI MCP Integration: https://ai.ortusbooks.com/~gitbook/mcp
+
 ## Project Purpose
 
 This is a **presentation/demo workspace** showcasing the BoxLang AI Module (`bx-ai`). It contains progressive examples demonstrating key features of the module for teaching purposes.
@@ -110,7 +125,7 @@ class Product {
 }
 
 // AI returns typed object, not plain text
-var product = aiChat(
+product = aiChat(
     "Extract: Wireless Mouse - $29.99 - In Stock",
     returnFormat: new Product()
 )
@@ -148,7 +163,7 @@ user?.address?.city
 
 ### BIF Call Signature
 ```javascript
-aiChat( 
+aiChat(
     prompt,           // String or aiMessage() object
     params,           // Struct: { model, temperature, max_tokens, etc. }
     options           // Struct: { provider, returnFormat, timeout, logging }
