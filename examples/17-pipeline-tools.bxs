@@ -1,0 +1,65 @@
+/**
+ * Example 17: Pipelines with Tools
+ *
+ * Tools enable AI to call functions during conversation, making it dynamic and interactive.
+ * Pipelines can incorporate tools for real-time data processing and actions.
+ *
+ * What you'll learn:
+ * - How to create tools with aiTool()
+ * - How to pass tools to pipelines
+ * - How AI can call tools automatically during execution
+ */
+
+println( "========================================" )
+println( "Example 17: Pipelines with Tools" )
+println( "========================================" )
+println( "" )
+
+// Define a simple tool function
+function getProductPrice( required string productName ) {
+	// Simulated product database
+	var products = {
+		"laptop": 1299.99,
+		"mouse": 29.99,
+		"keyboard": 79.99,
+		"monitor": 399.99
+	}
+	var name = productName.toLowerCase()
+	return products[ name ] ?: "Product not found"
+}
+
+// Create a tool for product lookup
+var priceLookupTool = aiTool(
+	"getPrice",
+	"Look up the price of a product by name",
+	[ { name: "productName", type: "string", description: "Name of the product", required: true } ],
+	getProductPrice
+)
+
+// Pipeline with tool
+var prompt = "What are the prices of a laptop and a mouse?"
+
+var result = aiMessage( prompt )
+	.system( "You are a helpful product assistant. Use the getPrice tool to look up prices." )
+	.toDefaultModel()
+	.addTools( [ priceLookupTool ] )
+	.run()
+
+println( "🛠️  AI Response (with tool usage):" )
+println( result )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Create tools with aiTool( name, description, params, callback )" )
+println( "2. Add tools to pipelines with .addTools( [ tool1, tool2 ] )" )
+println( "3. AI automatically calls tools when needed" )
+println( "4. Tool results are seamlessly integrated into AI responses" )
+println( "5. Tools enable real-time data access and dynamic interactions" )
+println( "" )
+println( "TIP: Tools turn static pipelines into interactive systems!" )
+println( "" )

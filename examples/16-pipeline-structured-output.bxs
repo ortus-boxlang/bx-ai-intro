@@ -1,0 +1,50 @@
+/**
+ * Example 16: Pipelines with Structured Output
+ *
+ * Structured output allows pipelines to return typed objects instead of raw text.
+ * This creates validated, predictable data from AI responses.
+ *
+ * What you'll learn:
+ * - How to use returnFormat in pipelines for structured output
+ * - How to get typed objects from AI instead of strings
+ * - How to chain structured output with other operations
+ */
+
+println( "========================================" )
+println( "Example 16: Pipelines with Structured Output" )
+println( "========================================" )
+println( "" )
+
+// Use the Product class from models
+import "models.Product"
+
+// Prompt for product extraction
+var prompt = "Extract product details from this text: 'The UltraBook Pro 15 laptop costs $1,299.99, is in Electronics category, and is in stock. Features: 15-inch display, 16GB RAM, 512GB SSD.'"
+
+// Pipeline with structured output
+var product = aiMessage( prompt )
+	.system( "Extract product information and return ONLY valid JSON matching the Product schema." )
+	.toDefaultModel()
+	.run( returnFormat: new models.Product() )
+
+println( "✅ Extracted Product (Structured Object):" )
+println( "   Title: " & product.title )
+println( "   Price: $" & numberFormat( product.price, '9.99' ) )
+println( "   Category: " & product.category )
+println( "   In Stock: " & ( product.inStock ? 'Yes' : 'No' ) )
+println( "   Features: " & product.features.len() & " items" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use returnFormat: new ClassName() for structured output" )
+println( "2. Pipelines automatically parse and populate typed objects" )
+println( "3. Structured output validates AI responses against class definitions" )
+println( "4. Type-safe data eliminates manual parsing and validation" )
+println( "" )
+println( "TIP: Structured output makes pipelines more predictable and type-safe!" )
+println( "" )
