@@ -9,8 +9,8 @@
                 // gpt-oss-120b
                 "defaultParams" : {
                     //"model": "stepfun/step-3.5-flash"
-					//"model" : "openrouter/free"
-					"model" : "openrouter/auto"
+					"model" : "openrouter/free"
+					//"model" : "openrouter/auto"
                 },
                 // The default memory to use when calling aiMemory()
                 "memory" : {

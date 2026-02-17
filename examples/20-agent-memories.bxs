@@ -25,9 +25,9 @@ summaryMemory = aiMemory(
 	userId: userId,
 	conversationId: conversationId,
 	config: {
-		summaryThreshold: 3,  // Low threshold to demonstrate summarization
-		summaryProvider: "openai",
-		summaryModel: "gpt-4o"
+		summaryThreshold: 2,  // Low threshold to demonstrate summarization
+		summaryProvider: "openrouter",
+		summaryModel: "openrouter/auto"
 	}
 )
 
@@ -101,27 +101,19 @@ println( "Total messages in summary memory: #allMessages.len()#" )
 println( "" )
 
 // Get recent messages
-recentMessages = summaryMemory.getRecent( 3 )
-println( "Last 3 messages from summary memory:" )
-recentMessages.each( ( msg ) => {
-    println( "  - [#msg.role#] #msg.content.left( 60 )#..." )
+recentMessages = summaryMemory.getRecent( 5 )
+println( "Last 5 messages from summary memory:" )
+recentMessages.each( ( msg, index ) => {
+    println( "#index#. - [#msg.role#] #msg.content.left( 60 )#..." )
 })
 println( "" )
 
 // Search for messages containing a keyword
 shippingMessages = summaryMemory.search( "shipping" )
-println( "Messages mentioning 'shipping': #shippingMessages.len()#" )
+println( "Summary Messages mentioning 'shipping': #shippingMessages.len()#" )
 if ( !shippingMessages.isEmpty() ) {
     println( "  Found: #shippingMessages.first().content#" )
 }
-println( "" )
-
-// Get messages by role
-userMessages = summaryMemory.getByRole( "user" )
-assistantMessages = summaryMemory.getByRole( "assistant" )
-println( "Message count by role:" )
-println( "  - User: #userMessages.len()#" )
-println( "  - Assistant: #assistantMessages.len()#" )
 println( "" )
 
 // Export memory data (useful for backup or analysis)
