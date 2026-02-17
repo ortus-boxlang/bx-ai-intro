@@ -25,10 +25,11 @@ summaryMemory = aiMemory(
 	userId: userId,
 	conversationId: conversationId,
 	config: {
-    maxMessages: 3,  // Low threshold to demonstrate summarization
-    summaryModel: "openai",  // Use OpenAI for summaries
-    summaryParams: { model: "gpt-4o-mini" }
-})
+		summaryThreshold: 3,  // Low threshold to demonstrate summarization
+		summaryProvider: "openai",
+		summaryModel: "gpt-4o"
+	}
+)
 
 // Create a File Memory to persist conversations to disk
 // Stores JSON files in examples/data directory
@@ -37,15 +38,16 @@ fileMemory = aiMemory(
 	userId: userId,
 	conversationId: conversationId,
 	config: {
-		directory: dataDir
-	} )
+		directoryPath: dataDir
+	}
+)
 
 // Create an agent with BOTH memory systems
 supportAgent = aiAgent(
     name: "customer-support",
     description: "Friendly customer support assistant",
     instructions: "Help customers with their questions. Be polite and thorough.",
-    model: aiModel(), // Default model
+    model: aiModel(),
     memory: [ summaryMemory, fileMemory ]
 )
 
