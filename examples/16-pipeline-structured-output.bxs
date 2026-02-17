@@ -15,17 +15,16 @@ println( "Example 16: Pipelines with Structured Output" )
 println( "========================================" )
 println( "" )
 
-// Use the Product class from models
-import "models.Product"
-
 // Prompt for product extraction
-var prompt = "Extract product details from this text: 'The UltraBook Pro 15 laptop costs $1,299.99, is in Electronics category, and is in stock. Features: 15-inch display, 16GB RAM, 512GB SSD.'"
+prompt = "Extract product details from this text: 'The UltraBook Pro 15 laptop costs $1,299.99, is in Electronics category,
+and is in stock. Features: 15-inch display, 16GB RAM, 512GB SSD.'"
 
 // Pipeline with structured output
-var product = aiMessage( prompt )
+product = aiMessage( prompt )
 	.system( "Extract product information and return ONLY valid JSON matching the Product schema." )
 	.toDefaultModel()
-	.run( returnFormat: new models.Product() )
+	.structuredOutput( new models.Product() )
+	.run( )
 
 println( "✅ Extracted Product (Structured Object):" )
 println( "   Title: " & product.title )
@@ -33,7 +32,7 @@ println( "   Price: $" & numberFormat( product.price, '9.99' ) )
 println( "   Category: " & product.category )
 println( "   In Stock: " & ( product.inStock ? 'Yes' : 'No' ) )
 println( "   Features: " & product.features.len() & " items" )
-println( "" )
+println( product.features )
 
 // ============================================================================
 // Key Takeaways

@@ -25,7 +25,7 @@ println( "" )
 // Log Response - shows the full API response (use with caution)
 println( "--- Logging Response to Console ---" )
 println( "Careful: can log sensitive information" )
-results = aiChat( "What is ColdBox?", {}, { logResponseToConsole: true } )
+//results = aiChat( "What is ColdBox?", {}, { logResponseToConsole: true } )
 println( results )
 println( "" )
 

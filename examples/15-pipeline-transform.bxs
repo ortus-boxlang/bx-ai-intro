@@ -29,7 +29,8 @@ result = aiMessage( prompt )
 	// Built-in JSON extractor
 	.asJSON()
 	// Custom formatter
-	.to( aiTransform( new RecipeTransformer() ) )
+	//.to( aiTransform( new RecipeTransformer() ) )
+	.transform( new RecipeTransformer() )
 	// Custom Lambda for final tweaks
 	.transform( formattedRecipe => {
 		// Add a fun header to the formatted recipe

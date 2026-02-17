@@ -31,9 +31,7 @@ Key features include: 15-inch display, 16GB RAM, 512GB SSD, and long battery lif
 product = aiChat(
     messages: productDescription,
     options: {
-		returnFormat: new models.Product(),
-		logRequestToConsole: true,
-		logResponseToConsole: true
+		returnFormat: new models.Product()
 	}
 )
 
