@@ -1,13 +1,42 @@
-println( "🚀 Running Basic Pipeline Example..." )
+/**
+ * Example 14: Basic Pipeline Streaming
+ *
+ * This example shows how to stream output from a pipeline in real time.
+ *
+ * What you'll learn:
+ * - How to stream responses from a pipeline
+ * - How to handle chunks as they arrive
+ */
 
-// Simple pipeline: Message → AI Model → Transform
-result = aiMessage( "Explain AI and its usage" )
+println( "========================================" )
+println( "Example 14: Basic Pipeline Streaming" )
+println( "========================================" )
+println( "" )
+
+println( "🚀 Running Basic Pipeline Streaming Example..." )
+println( "" )
+
+// Simple pipeline: Message → Model → Stream
+aiMessage( "Explain AI and its usage" )
     .system( "You are a helpful assistant that provides concise explanations." )
     .toDefaultModel()
- 	.stream( chunk => {
-		// This function is called for each chunk of content as it arrives
-		// You can process or transform the content here before it's returned to the caller
-		// For this example, we'll just pass it through directly
+	.stream( chunk => {
+		// Process each chunk as it arrives
 		var content = chunk.choices?.first()?.delta?.content ?: ""
-		print( content )  // Print each chunk as it arrives
+		print( content )
 	} )
+
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Use .stream() on a pipeline to receive incremental output" )
+println( "2. The callback runs for each content chunk" )
+println( "3. Streaming improves responsiveness for longer responses" )
+println( "" )
+println( "TIP: Use streaming for live UX or progress indicators." )
+println( "" )

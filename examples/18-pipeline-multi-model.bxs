@@ -1,0 +1,34 @@
+println( "========================================" )
+println( "Example 18: Pipelines with Multiple Models" )
+println( "========================================" )
+println( "" )
+
+result = aiMessage( "Write code to ${task}" )
+	.system( "You are a helpful coding assistant, that will write the code and return it ONLY" )
+	.toDefaultModel()
+	.withName( "coder" )
+	.transform( response => { code : response }  )
+	.pipe(
+		// aiMessage( "Review the provided code: ${_input}" )
+		aiMessage( "Review the provided code: ${code}" )
+			.toModel( "claude" ).withName( "reviewer" )
+	)
+	.run( { task: "sort an array of numbers in BoxLang" } )
+
+println( result )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Create tools with aiTool( name, description, params, callback )" )
+println( "2. Add tools to pipelines with .bindTools( tool1, tool2 )" )
+println( "3. AI automatically calls tools when needed" )
+println( "4. Tool results are seamlessly integrated into AI responses" )
+println( "5. Tools enable real-time data access and dynamic interactions" )
+println( "" )
+println( "TIP: Tools turn static pipelines into interactive systems!" )
+println( "" )
