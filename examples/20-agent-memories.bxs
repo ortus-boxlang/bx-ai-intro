@@ -1,0 +1,140 @@
+/**
+ * Example 20: Agent with Multiple Memories
+ *
+ * Agents can use multiple memory systems to maintain conversation history,
+ * summarize long conversations, and persist data across sessions.
+ * This example demonstrates combining Summary Memory and File Memory.
+ *
+ * What you'll learn:
+ * - How to create agents with multiple memory systems
+ * - Using SummaryMemory to compress conversation history
+ * - Using FileMemory to persist conversations
+ * - Working with memory methods (add, search, export, etc.)
+ * - Managing conversation history effectively
+ */
+
+// Ensure the data directory exists for file-based memory
+dataDir = expandPath( "./examples/data" )
+userId = "demo-user"
+conversationId = "agent-conversation"
+
+// Create a Summary Memory with low threshold (since default is 10 messages)
+// This will summarize old messages when we exceed 5 messages
+summaryMemory = aiMemory(
+	memory: "summary",
+	userId: userId,
+	conversationId: conversationId,
+	config: {
+    maxMessages: 3,  // Low threshold to demonstrate summarization
+    summaryModel: "openai",  // Use OpenAI for summaries
+    summaryParams: { model: "gpt-4o-mini" }
+})
+
+// Create a File Memory to persist conversations to disk
+// Stores JSON files in examples/data directory
+fileMemory = aiMemory(
+	memory: "file",
+	userId: userId,
+	conversationId: conversationId,
+	config: {
+		directory: dataDir
+	} )
+
+// Create an agent with BOTH memory systems
+supportAgent = aiAgent(
+    name: "customer-support",
+    description: "Friendly customer support assistant",
+    instructions: "Help customers with their questions. Be polite and thorough.",
+    model: aiModel(), // Default model
+    memory: [ summaryMemory, fileMemory ]
+)
+
+println( "=== Agent with Multiple Memories ===" )
+println( "" )
+
+// Simulate a multi-turn conversation
+userQuestions = [
+    "What's your return policy?",
+    "How long does shipping take?",
+    "Do you offer international shipping?",
+    "What payment methods do you accept?",
+]
+
+println( "Running multi-turn conversation to demonstrate memory compression..." )
+println( "" )
+
+userQuestions.each( ( question, index ) => {
+	println( "=================== Turn #index++# ===================" )
+    println( "🗣️ User (#index#): #question#" )
+    // Run agent
+    response = supportAgent.run( question )
+    println( "🤖 Agent: #response#" )
+    println( "=====================================================" )
+})
+
+println( "=== Memory Statistics ===" )
+println( "" )
+
+// Get summary information from both memories
+summaryStats = summaryMemory.getSummary()
+fileStats = fileMemory.getSummary()
+
+println( "Summary Memory:" )
+println( summaryStats )
+println( "" )
+
+println( "File Memory:" )
+println( fileStats )
+println( "" )
+
+// Demonstrate memory methods
+println( "=== Demonstrating Memory Methods ===" )
+println( "" )
+
+// Get all messages from summary memory
+allMessages = summaryMemory.getAll()
+println( "Total messages in summary memory: #allMessages.len()#" )
+println( "" )
+
+// Get recent messages
+recentMessages = summaryMemory.getRecent( 3 )
+println( "Last 3 messages from summary memory:" )
+recentMessages.each( ( msg ) => {
+    println( "  - [#msg.role#] #msg.content.left( 60 )#..." )
+})
+println( "" )
+
+// Search for messages containing a keyword
+shippingMessages = summaryMemory.search( "shipping" )
+println( "Messages mentioning 'shipping': #shippingMessages.len()#" )
+if ( !shippingMessages.isEmpty() ) {
+    println( "  Found: #shippingMessages.first().content#" )
+}
+println( "" )
+
+// Get messages by role
+userMessages = summaryMemory.getByRole( "user" )
+assistantMessages = summaryMemory.getByRole( "assistant" )
+println( "Message count by role:" )
+println( "  - User: #userMessages.len()#" )
+println( "  - Assistant: #assistantMessages.len()#" )
+println( "" )
+
+// Export memory data (useful for backup or analysis)
+exportedData = fileMemory.export()
+println( "Exported file memory summary:" )
+println( "  - User: #exportedData.userId#" )
+println( "  - Conversation: #exportedData.conversationId#" )
+println( "  - Messages stored: #exportedData.messages.len()#" )
+println( "" )
+
+// Demonstrate memory search
+println( "=== Searching Memory ===" )
+println( "" )
+paymentMessages = fileMemory.search( "payment", false )
+println( "Messages containing 'payment': #paymentMessages.len()#" )
+paymentMessages.each( ( msg ) => {
+    println( "  - [#msg.role#] #msg.content.left( 50 )#..." )
+})
+println( "" )
+println( "✓ Example complete! Memory data persisted to: #dataDir#" )
