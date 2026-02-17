@@ -60,6 +60,7 @@ userQuestions = [
     "How long does shipping take?",
     "Do you offer international shipping?",
     "What payment methods do you accept?",
+	"Can I track my order after I purchase?"
 ]
 
 println( "Running multi-turn conversation to demonstrate memory compression..." )
