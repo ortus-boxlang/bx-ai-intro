@@ -64,12 +64,13 @@ println( "Running multi-turn conversation to demonstrate memory compression..." 
 println( "" )
 
 userQuestions.each( ( question, index ) => {
-	println( "=================== Turn #index++# ===================" )
+	println( "=================== Turn #index# ===================" )
     println( "🗣️ User (#index#): #question#" )
     // Run agent
     response = supportAgent.run( question )
     println( "🤖 Agent: #response#" )
     println( "=====================================================" )
+	index++
 })
 
 println( "=== Memory Statistics ===" )
