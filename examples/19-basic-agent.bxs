@@ -1,0 +1,68 @@
+/**
+ * Example 19: Basic Agent
+ *
+ * Agents are autonomous AI entities that can reason, use tools, maintain memory,
+ * and delegate tasks to sub-agents. This shows the simplest agent possible.
+ *
+ * What you'll learn:
+ * - How to create a basic agent with aiAgent()
+ * - How agents maintain conversation memory automatically
+ * - How to run an agent with simple inputs
+ */
+println( "========================================" )
+println( "Example 19: Basic Agent" )
+println( "========================================" )
+
+// Create a simple agent with default settings
+// - Uses default AI model from config
+// - Automatically gets window memory (last 10 messages)
+// - No tools or sub-agents (yet!)
+myAgent = aiAgent(
+    name: "Assistant",
+    description: "A helpful assistant that can answer questions.",
+    instructions: "You are a helpful assistant. Be concise and accurate."
+)
+
+println( "🤖 Agent created: " & myAgent.getName() )
+println( "" )
+
+// First question
+prompt = "What is the capital of France?"
+println( "👤 User: " & prompt )
+response1 = myAgent.run( prompt )
+println( "🤖 Agent: " & response1 )
+println( "" )
+
+cliRead( "Press Enter to ask follow-up questions that show the agent's memory in action..." )
+
+// Second question - agent remembers previous context
+prompt = "What is the BoxLang JVM Language (Reference: www.boxlang.io)?"
+println( "👤 User: " & prompt )
+response2 = myAgent.run( prompt )
+println( "🤖 Agent: " & response2 )
+println( "" )
+
+cliRead( "Press Enter to ask follow-up questions that show the agent's memory in action..." )
+
+// Third question - agent can handle follow-up questions
+prompt = "Can you summarize the differences between CFML and BoxLang from here: https://boxlang.ortusbooks.com/getting-started/overview/syntax-style-guide/cfml?"
+println( "👤 User: " & prompt )
+response3 = myAgent.run( prompt )
+println( "🤖 Agent: " & response3 )
+println( "" )
+
+cliRead( "Press Enter to view the agent's configuration..." )
+
+// Print the Agent's Config
+println( "🛠️  Agent Configuration:" )
+println( myAgent.getConfig() )
+// Print the Agent's Memory (last 10 messages)
+println( "🧠 Agent Memory (Last 10 Messages):" )
+println( myAgent.getMemoryMessages() )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )

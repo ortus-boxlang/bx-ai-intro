@@ -68,22 +68,49 @@ boxlang examples/01-basic-chat.bxs
 
 Each example demonstrates specific features. Run them in order to build understanding:
 
+### Basic Chat Examples
+
 | # | Example | Topics |
 |---|---------|--------|
 | 01 | [Basic Chat](examples/01-basic-chat.bxs) | Simple text prompts to AI |
 | 02 | [Custom Provider](examples/02-basic-chat-custom-provider.bxs) | Override default provider/model |
 | 03 | [Options & Formats](examples/03-basic-chat-options.bxs) | Logging, return formats, debugging |
 | 04 | [Structured Output](examples/04-basic-chat-structured-output.bxs) | Typed responses with classes |
+
+### Message & Conversation Examples
+
+| # | Example | Topics |
+|---|---------|--------|
 | 05 | [Message Objects](examples/05-chat-with-messages.bxs) | Messages with metadata & roles |
 | 06 | [Multimodal Content](examples/06-multimodal-messages.bxs) | Images, audio, and mixed content |
 | 07 | [Multi-Turn Conversations](examples/07-chat-multi-turn.bxs) | Context-aware conversation loops |
 | 08 | [Tool Usage](examples/08-chat-tools.bxs) | Function calling and tools |
+
+### Streaming Examples
+
+| # | Example | Topics |
+|---|---------|--------|
 | 09 | [Basic Streaming](examples/09-chat-stream.bxs) | Real-time response streaming |
 | 10 | [Stream with UX](examples/10-chat-stream-ux.bxs) | Streaming with formatted output |
 | 11 | [Reasoning Models](examples/11-chat-stream-with-reasoning.bxs) | Advanced reasoning with streaming |
 | 12 | [Message Context](examples/12-message-context.bxs) | Managing complex conversation history |
-| 13 | [Basic Pipeline](examples/13-basic-pipeline.bxs) | Sequential AI operations |
+
+### Pipeline Examples
+
+| # | Example | Topics |
+|---|---------|--------|
+| 13 | [Basic Pipeline](examples/13-basic-pipeline.bxs) | Sequential AI operations ([Intro](examples/13-basic-pipeline.md)) |
 | 14 | [Pipeline Streaming](examples/14-basic-pipeline-stream.bxs) | Pipelines with real-time output |
+| 15 | [Pipeline Transformers](examples/15-pipeline-transform.bxs) | Custom and built-in transformers |
+| 16 | [Pipeline Structured Output](examples/16-pipeline-structured-output.bxs) | Typed responses in pipelines |
+| 17 | [Pipeline Tools](examples/17-pipeline-tools.bxs) | Function calling in pipelines |
+| 18 | [Multi-Model Pipeline](examples/18-pipeline-multi-model.bxs) | Chain multiple AI models together |
+
+### Agent Examples
+
+| # | Example | Topics |
+|---|---------|--------|
+| 19 | [Basic Agent](examples/19-basic-agent.bxs) | Creating autonomous AI agents |
 
 ---
 
