@@ -14,7 +14,7 @@
  */
 
 // Ensure the data directory exists for file-based memory
-dataDir = expandPath( "./examples/data" )
+dataDir = expandPath( "./data" )
 userId = "demo-user"
 conversationId = "agent-conversation"
 

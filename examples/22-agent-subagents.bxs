@@ -1,0 +1,25 @@
+/**
+ * Example 20: Agent with Multiple Memories
+ *
+ * Agents can use multiple memory systems to maintain conversation history,
+ * summarize long conversations, and persist data across sessions.
+ * This example demonstrates combining Summary Memory and File Memory.
+ *
+ * What you'll learn:
+ * - How to create agents with multiple memory systems
+ * - Using SummaryMemory to compress conversation history
+ * - Using FileMemory to persist conversations
+ * - Working with memory methods (add, search, export, etc.)
+ * - Managing conversation history effectively
+ */
+
+userId = "demo-user"
+conversationId = "agent-conversation"
+
+// Create an agent with 2 tools
+supportAgent = aiAgent(
+    name: "customer-support",
+    description: "Friendly customer support assistant",
+    instructions: "Help customers with their questions. Be polite and thorough.",
+    model: aiModel()
+)

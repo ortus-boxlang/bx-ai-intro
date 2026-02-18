@@ -1,0 +1,113 @@
+class {
+
+	// Properties - These are automatically injected by the BoxLang runtime
+	property name="scheduler";       // The BaseScheduler instance this class wraps
+	property name="runtime";         // The BoxRuntime instance
+	property name="logger";          // A logger instance for this scheduler
+	property name="asyncService";    // The AsyncService for executor management
+	property name="cacheService";    // The CacheService for distributed scheduling
+	property name="interceptorService"; // The InterceptorService for event broadcasting
+
+	/**
+	 * The configure method is called by the BoxLang runtime to allow the scheduler to configure itself.
+	 *
+	 * This is where you define your tasks and setup global configuration.
+	 */
+	function configure(){
+		// Create our Support Ticket Analyzer Agent
+		// Uses our default model and memory
+		var agent = aiAgent(
+			name: "support-ticket-analyzer",
+			description: "Analyzes incoming customer support tickets and suggests priority levels",
+			instructions: "You are a customer support ticket analyzer. Analyze the ticket and respond with ONLY a JSON
+			object with these fields: priority (high/medium/low), summary (2 sentence max), suggestedAction.
+			Be concise and professional."
+		)
+
+		// Sample support tickets for demonstration
+		var sampleTickets = [
+			"Customer reports website down for 2 hours, losing sales",
+			"User forgot password and requesting reset assistance",
+			"Feature request: Add dark mode to mobile app",
+			"Payment processing failing for international transactions",
+			"Documentation has outdated API examples"
+		]
+
+		// Define the automated ticket analysis task
+		scheduler.task( "Analyze Support Tickets" )
+			.call( () => {
+				println( "👟 Running scheduled task: Analyze Support Tickets..." )
+
+				randomTicket = sampleTickets[ randRange( 1, sampleTickets.len() ) ]
+				analysis = agent.run( "Analyze this support ticket: " & randomTicket )
+
+				println( "📋 Ticket: #randomTicket#" )
+				println( "🤖 AI Analysis: #analysis#" )
+				println( "---" )
+			} )
+			//.everyDayAt( "09:00" )
+			.every( 15, "second" )
+	}
+
+	/**
+	 * --------------------------------------------------------------------------
+	 * Life - Cycle Callbacks
+	 * --------------------------------------------------------------------------
+	 */
+
+	/**
+	 * Called after the scheduler has registered all schedules
+	 */
+	void function onStartup(){
+		println( "I have started!" & scheduler.getSchedulerName() );
+	}
+
+	/**
+	 * Called before the scheduler is going to be shutdown
+	 */
+	void function onShutdown(){
+		println( "I have shutdown!" & scheduler.getSchedulerName() );
+	}
+
+	/**
+	 * Called whenever ANY task fails
+	 *
+	 * @task      The task that got executed
+	 * @exception The exception object
+	 */
+	function onAnyTaskError( task, exception ){
+		println( "Any task [#task.getName()#] blew up " & exception.getMessage() );
+	}
+
+	/**
+	 * Called whenever ANY task succeeds
+	 *
+	 * @task   The task that got executed
+	 * @result The result (if any) that the task produced as an Optional
+	 */
+	function onAnyTaskSuccess( task, result ){
+		println( "on any task success [#task.getName()#]" );
+		println( "results for task are: " & result.orElse( "No result" ) );
+	}
+
+	/**
+	 * Called before ANY task runs
+	 *
+	 * @task The task about to be executed
+	 */
+	function beforeAnyTask( task ){
+		println( "before any task [#task.getName()#]" );
+	}
+
+	/**
+	 * Called after ANY task runs
+	 *
+	 * @task   The task that got executed
+	 * @result The result (if any) that the task produced as an Optional
+	 */
+	function afterAnyTask( task, result ){
+		println( "after any task completed [#task.getName()#]" );
+		println( "results for task are: " & result.orElse( "No result" ) );
+	}
+
+}
