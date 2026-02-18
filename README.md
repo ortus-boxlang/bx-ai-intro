@@ -1,6 +1,6 @@
 # ⚡︎ BoxLang AI Intro Examples
 
-<img src="examples/assets/bxai-logo-full-light-L.svg" alt="bx-ai logo" width="500">
+<img src="examples/assets/boxlang-ai.png" alt="bx-ai logo" width="500">
 
 **Comprehensive Examples for the [bx-ai Module](https://github.com/ortus-boxlang/bx-ai)** – A progressive tutorial workspace showcasing everything from basic chat to advanced streaming, multimodal content, tool integration, and structured outputs.
 
