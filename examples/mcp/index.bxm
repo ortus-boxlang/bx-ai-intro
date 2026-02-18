@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>BoxLang AI MCP Server & Invoker Demo</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+	<style>
+		:root {
+			--boxlang-dark: #1a1a2e;
+			--boxlang-primary: #0f3460;
+			--boxlang-accent: #e94560;
+		}
+
+		body {
+			background: linear-gradient(135deg, var(--boxlang-dark) 0%, var(--boxlang-primary) 100%);
+			min-height: 100vh;
+			color: #ecf0f1;
+		}
+
+		.navbar {
+			background-color: rgba(15, 52, 96, 0.95) !important;
+			backdrop-filter: blur(10px);
+			border-bottom: 2px solid var(--boxlang-accent);
+		}
+
+		.navbar-brand {
+			font-weight: 700;
+			font-size: 1.5rem;
+			background: linear-gradient(45deg, #fff, var(--boxlang-accent));
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+		}
+
+		.welcome-section {
+			background: linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(15, 52, 96, 0.3) 100%);
+			border: 1px solid rgba(233, 69, 96, 0.3);
+			border-radius: 12px;
+			padding: 3rem;
+			margin-bottom: 2rem;
+		}
+
+		.welcome-section h1 {
+			background: linear-gradient(45deg, #fff, var(--boxlang-accent));
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			font-weight: 700;
+		}
+
+		.card {
+			background: rgba(255, 255, 255, 0.95);
+			border: none;
+			border-radius: 12px;
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+			transition: all 0.3s ease;
+		}
+
+		.card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 12px 48px rgba(233, 69, 96, 0.2);
+		}
+
+		.card-header {
+			background: linear-gradient(135deg, var(--boxlang-primary) 0%, var(--boxlang-accent) 100%);
+			border: none;
+			border-radius: 12px 12px 0 0;
+			color: white;
+			font-weight: 600;
+		}
+
+		.btn-primary {
+			background-color: var(--boxlang-accent);
+			border-color: var(--boxlang-accent);
+			font-weight: 600;
+			transition: all 0.3s ease;
+		}
+
+		.btn-primary:hover {
+			background-color: #d63452;
+			border-color: #d63452;
+			transform: translateY(-2px);
+		}
+
+		.result-box {
+			background: #f8f9fa;
+			border-left: 4px solid var(--boxlang-accent);
+			border-radius: 8px;
+			padding: 1.5rem;
+			margin-top: 1rem;
+		}
+
+		.result-box pre {
+			background: #2d2d2d;
+			color: #f8f8f2;
+			padding: 1rem;
+			border-radius: 8px;
+			overflow-x: auto;
+		}
+
+		.spinner-border {
+			color: var(--boxlang-accent);
+		}
+
+		.badge-accent {
+			background-color: var(--boxlang-accent);
+		}
+
+		.server-card {
+			background: rgba(255, 255, 255, 0.95);
+			border: 1px solid rgba(233, 69, 96, 0.2);
+			border-radius: 8px;
+			padding: 1.5rem;
+			margin-bottom: 1rem;
+		}
+
+		.stat-item {
+			text-align: center;
+			padding: 1rem;
+		}
+
+		.stat-item h4 {
+			color: var(--boxlang-accent);
+			font-weight: 700;
+		}
+
+		.stat-item p {
+			color: #666;
+			margin-bottom: 0;
+		}
+
+		.input-group-text {
+			background: linear-gradient(135deg, var(--boxlang-primary) 0%, var(--boxlang-accent) 100%);
+			border: none;
+			color: white;
+		}
+
+		.form-control:focus {
+			border-color: var(--boxlang-accent);
+			box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
+		}
+
+		.fade-in {
+			animation: fadeIn 0.5s ease-in;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(10px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.loading-bar {
+			height: 3px;
+			background: var(--boxlang-accent);
+			animation: loading 1.5s ease-in-out infinite;
+		}
+
+		@keyframes loading {
+			0%, 100% { width: 0; }
+			50% { width: 100%; }
+		}
+
+		.icon-box {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 50px;
+			height: 50px;
+			background: linear-gradient(135deg, var(--boxlang-primary) 0%, var(--boxlang-accent) 100%);
+			border-radius: 8px;
+			color: white;
+			font-size: 1.5rem;
+		}
+	</style>
+</head>
+<body>
+	<!-- Navigation -->
+	<nav class="navbar navbar-dark">
+		<div class="container-fluid">
+			<span class="navbar-brand">
+				<i class="bi bi-robot"></i> BoxLang AI MCP Server & Invoker
+			</span>
+			<span class="badge badge-accent">Demo v1.0</span>
+		</div>
+	</nav>
+
+	<div class="container-fluid py-5">
+		<!-- Welcome Section -->
+		<div class="row mb-5">
+			<div class="col-lg-12">
+				<div class="welcome-section">
+					<h1 class="display-4 mb-3">
+						<i class="bi bi-rocket-fill"></i> Welcome to BoxLang AI MCP Server & Invoker Demo
+					</h1>
+					<p class="lead mb-2">
+						Explore the power of Model Context Protocol (MCP) with BoxLang AI Module
+					</p>
+					<p class="text-muted">
+						This demo showcases how to register and invoke MCP tools and prompts using the BoxLang AI MCP Client.
+						Try calling the registered tools below and see the results in real-time.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<div x-cloak x-data="mcpDemo()" class="row">
+			<!-- Registered Servers Section -->
+			<div class="col-lg-12 mb-5">
+				<div class="card">
+					<div class="card-header">
+						<i class="bi bi-server"></i> Registered MCP Servers & Statistics
+					</div>
+					<div class="card-body">
+						<div class="row" id="servers-container">
+							<p class="text-muted">Loading server information...</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tools Section -->
+			<div class="col-lg-6 mb-4">
+				<div class="card h-100">
+					<div class="card-header">
+						<i class="bi bi-wrench-adjustable"></i> Tool 1: Get Module List
+					</div>
+					<div class="card-body">
+						<p class="text-muted small">
+							Retrieves all loaded BoxLang modules in the system.
+						</p>
+						<button
+							@click="executeTool('getModuleList', {})"
+							:disabled="loading.moduleList"
+							class="btn btn-primary w-100"
+						>
+							<span x-show="!loading.moduleList">
+								<i class="bi bi-play-fill"></i> Execute Tool
+							</span>
+							<span x-show="loading.moduleList" class="spinner-border spinner-border-sm me-2"></span>
+						</button>
+						<div x-show="results.moduleList" class="result-box fade-in" x-transition>
+							<small class="d-block mb-2 text-muted">Result:</small>
+							<pre x-text="JSON.stringify(results.moduleList, null, 2)"></pre>
+						</div>
+						<div x-show="errors.moduleList" class="alert alert-danger fade-in mt-3" x-transition>
+							<small><strong>Error:</strong></small>
+							<div x-text="errors.moduleList"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-6 mb-4">
+				<div class="card h-100">
+					<div class="card-header">
+						<i class="bi bi-info-circle"></i> Tool 2: Get Module Info
+					</div>
+					<div class="card-body">
+						<p class="text-muted small">
+							Retrieves detailed information about a specific BoxLang module.
+						</p>
+						<div class="mb-3">
+							<label class="form-label">Module Name:</label>
+							<input
+								type="text"
+								x-model="inputs.moduleName"
+								class="form-control"
+								placeholder="e.g., bx-ai"
+									@keydown.enter="executeTool('getModuleInfo', { moduleName: inputs.moduleName })"
+							>
+						</div>
+						<button
+							@click="executeTool('getModuleInfo', { moduleName: inputs.moduleName })"
+							:disabled="loading.moduleInfo || !inputs.moduleName"
+							class="btn btn-primary w-100"
+						>
+							<span x-show="!loading.moduleInfo">
+								<i class="bi bi-play-fill"></i> Execute Tool
+							</span>
+							<span x-show="loading.moduleInfo" class="spinner-border spinner-border-sm me-2"></span>
+						</button>
+						<div x-show="results.moduleInfo" class="result-box fade-in" x-transition>
+							<small class="d-block mb-2 text-muted">Result:</small>
+							<pre x-text="JSON.stringify(results.moduleInfo, null, 2)"></pre>
+						</div>
+						<div x-show="errors.moduleInfo" class="alert alert-danger fade-in mt-3" x-transition>
+							<small><strong>Error:</strong></small>
+							<div x-text="errors.moduleInfo"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-6 mb-4">
+				<div class="card h-100">
+					<div class="card-header">
+						<i class="bi bi-lightning-fill"></i> Tool 3: Get BoxLang Info
+					</div>
+					<div class="card-body">
+						<p class="text-muted small">
+							Retrieves information about the current running BoxLang language and its features.
+						</p>
+						<button
+							@click="executeTool('getBoxLangInfo', {})"
+							:disabled="loading.boxlangInfo"
+							class="btn btn-primary w-100"
+						>
+							<span x-show="!loading.boxlangInfo">
+								<i class="bi bi-play-fill"></i> Execute Tool
+							</span>
+							<span x-show="loading.boxlangInfo" class="spinner-border spinner-border-sm me-2"></span>
+						</button>
+						<div x-show="results.boxlangInfo" class="result-box fade-in" x-transition>
+							<small class="d-block mb-2 text-muted">Result:</small>
+							<pre x-text="JSON.stringify(results.boxlangInfo, null, 2)"></pre>
+						</div>
+						<div x-show="errors.boxlangInfo" class="alert alert-danger fade-in mt-3" x-transition>
+							<small><strong>Error:</strong></small>
+							<div x-text="errors.boxlangInfo"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-6 mb-4">
+				<div class="card h-100">
+					<div class="card-header">
+						<i class="bi bi-chat-left-quote"></i> Prompt: Code Review
+					</div>
+					<div class="card-body">
+						<p class="text-muted small">
+							Get AI feedback on code snippets with language-specific context.
+						</p>
+						<div class="mb-3">
+							<label class="form-label">Language:</label>
+							<input
+								type="text"
+								x-model="inputs.language"
+								class="form-control"
+								placeholder="e.g., javascript, python, bxs"
+							>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Code:</label>
+							<textarea
+								x-model="inputs.code"
+								class="form-control"
+								rows="4"
+								placeholder="Paste your code here..."
+							></textarea>
+						</div>
+						<button
+							@click="executePrompt('codeReview', { language: inputs.language, code: inputs.code })"
+							:disabled="loading.codeReview || !inputs.language || !inputs.code"
+							class="btn btn-primary w-100"
+						>
+							<span x-show="!loading.codeReview">
+								<i class="bi bi-play-fill"></i> Execute Prompt
+							</span>
+							<span x-show="loading.codeReview" class="spinner-border spinner-border-sm me-2"></span>
+						</button>
+						<div x-show="results.codeReview" class="result-box fade-in" x-transition>
+							<small class="d-block mb-2 text-muted">AI Review Messages:</small>
+							<pre x-text="formatPromptResult(results.codeReview)"></pre>
+						</div>
+						<div x-show="errors.codeReview" class="alert alert-danger fade-in mt-3" x-transition>
+							<small><strong>Error:</strong></small>
+							<div x-text="errors.codeReview"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		function mcpDemo() {
+			return {
+				loading: {
+					moduleList: false,
+					moduleInfo: false,
+					boxlangInfo: false,
+					codeReview: false
+				},
+				results: {
+					moduleList: null,
+					moduleInfo: null,
+					boxlangInfo: null,
+					codeReview: null
+				},
+				errors: {
+					moduleList: null,
+					moduleInfo: null,
+					boxlangInfo: null,
+					codeReview: null
+				},
+				inputs: {
+					moduleName: '',
+					language: '',
+					code: ''
+				},
+
+				async executeTool(toolName, params) {
+					const loadingKey = {
+						'getModuleList': 'moduleList',
+						'getModuleInfo': 'moduleInfo',
+						'getBoxLangInfo': 'boxlangInfo'
+					}[toolName];
+
+					this.loading[loadingKey] = true;
+					this.errors[loadingKey] = null;
+					this.results[loadingKey] = null;
+
+					try {
+						const response = await fetch('caller.bxm', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								action: 'callTool',
+								tool: toolName,
+								params: params
+							})
+						});
+
+						const data = await response.json();
+
+						if (data.success) {
+							this.results[loadingKey] = data.result;
+						} else {
+							this.errors[loadingKey] = data.error || 'Unknown error occurred';
+						}
+					} catch (error) {
+						this.errors[loadingKey] = 'Failed to execute tool: ' + error.message;
+					} finally {
+						this.loading[loadingKey] = false;
+					}
+				},
+
+				async executePrompt(promptName, params) {
+					this.loading.codeReview = true;
+					this.errors.codeReview = null;
+					this.results.codeReview = null;
+
+					try {
+						const response = await fetch('caller.bxm', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								action: 'callPrompt',
+								prompt: promptName,
+								params: params
+							})
+						});
+
+						const data = await response.json();
+
+						if (data.success) {
+							this.results.codeReview = data.result;
+						} else {
+							this.errors.codeReview = data.error || 'Unknown error occurred';
+						}
+					} catch (error) {
+						this.errors.codeReview = 'Failed to execute prompt: ' + error.message;
+					} finally {
+						this.loading.codeReview = false;
+					}
+				},
+
+				formatPromptResult(data) {
+					if (Array.isArray(data)) {
+						return data.map(msg => `[${msg.role}]: ${msg.content}`).join('\n\n');
+					}
+					return JSON.stringify(data, null, 2);
+				},
+
+				init() {
+					// Load server information on page load
+					this.loadServerInfo();
+				},
+
+				async loadServerInfo() {
+					try {
+						const response = await fetch('caller.bxm', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								action: 'getServerInfo'
+							})
+						});
+
+						const data = await response.json();
+
+						if (data.success && data.servers) {
+							this.displayServers(data.servers);
+						}
+					} catch (error) {
+						console.error('Failed to load server info:', error);
+					}
+				},
+
+				displayServers(servers) {
+					const container = document.getElementById('servers-container');
+					if (!servers || servers.length === 0) {
+						container.innerHTML = '<div class="col-12"><p class="text-muted">No servers registered</p></div>';
+						return;
+					}
+
+					let html = '';
+					servers.forEach(server => {
+						html += `
+							<div class="col-lg-6 mb-3">
+								<div class="server-card fade-in">
+									<div class="d-flex align-items-center mb-3">
+										<div class="icon-box me-3">
+											<i class="bi bi-server"></i>
+										</div>
+										<div>
+											<h5 class="mb-0">${server.name}</h5>
+											<small class="text-muted">${server.description}</small>
+										</div>
+									</div>
+									<div class="row g-2">
+										<div class="col-6 col-md-3">
+											<div class="stat-item">
+												<h4>${server.toolCount || 0}</h4>
+												<p>Tools</p>
+											</div>
+										</div>
+										<div class="col-6 col-md-3">
+											<div class="stat-item">
+												<h4>${server.promptCount || 0}</h4>
+												<p>Prompts</p>
+											</div>
+										</div>
+										<div class="col-6 col-md-3">
+											<div class="stat-item">
+												<h4>${server.requestCount || 0}</h4>
+												<p>Requests</p>
+											</div>
+										</div>
+										<div class="col-6 col-md-3">
+											<div class="stat-item">
+												<h4>${server.errorCount || 0}</h4>
+												<p>Errors</p>
+											</div>
+										</div>
+									</div>
+									${server.status ? `<div class="mt-3"><span class="badge bg-success">${server.status}</span></div>` : ''}
+								</div>
+							</div>
+						`;
+					});
+
+					container.innerHTML = html;
+				}
+			};
+		}
+	</script>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

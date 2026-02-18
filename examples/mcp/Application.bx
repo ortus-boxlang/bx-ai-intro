@@ -1,0 +1,76 @@
+class{
+
+	this.name = "MCP Application";
+
+
+	function onRequestStart( string targetPage ) {
+
+		if( url.keyExists( "reload" ) ){
+			application.delete( "mcpserver" )
+		}
+
+		ensureMCPServer()
+    }
+
+	private function ensureMCPServer(){
+		if( application.keyExists( "mcpserver" ) ){
+			return application.get( "mcpserver" )
+		}
+
+		// Create an MCP server instance and store it in the application scope
+		application.mcpServer = mcpServer(
+			description: "MCP server for BoxLang AI tools",
+			version: "1.0.0",
+			cors: "*"
+		)
+		// Register Tools
+		.registerTool(
+			aiTool(
+				"getModuleList",
+				"Give me all the loaded BoxLang modules.",
+				() => getModuleList().keyList()
+			)
+		)
+		.registerTool(
+			aiTool(
+				"getModuleInfo",
+				"Give me detailed information about a specific BoxLang module, including its name, description, and available functions.",
+				( moduleName ) => {
+					return getModuleInfo( moduleName ).delete( "classLoader" )
+				}
+			).describeModuleName( "The name of the module you want information about. For example, 'bx-ai' or 'bx-docbox'." )
+		).registerTool(
+			aiTool(
+				"getBoxLangInfo",
+				"Give me information about the current running BoxLang language and its features.",
+				() => {
+					return server.boxlang.toJson()
+				}
+			)
+		)
+		// Register 1 Prompt
+		.registerPrompt(
+			name: "codeReview",
+			description: "A prompt for reviewing code snippets and providing feedback.",
+			args:[
+				{ name: "language", description: "Programming language", required: true },
+            	{ name: "code", description: "Code to review", required: true }
+			],
+			handler: ( args ) => {
+				return [
+					{
+						role: "system",
+						content: "You are a code reviewer specializing in #args.language#."
+					},
+					{
+						role: "user",
+						content: "Please review this code:\n\n```#args.language#\n#args.code#\n```"
+					}
+				]
+			}
+		)
+
+		println( "> MCP Server initialized and tools registered." )
+	}
+
+}

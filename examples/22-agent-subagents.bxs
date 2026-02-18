@@ -1,25 +1,127 @@
 /**
- * Example 20: Agent with Multiple Memories
+ * Example 22: Agent with Sub-Agents
  *
- * Agents can use multiple memory systems to maintain conversation history,
- * summarize long conversations, and persist data across sessions.
- * This example demonstrates combining Summary Memory and File Memory.
+ * Agents can delegate tasks to other agents by using sub-agents.
+ * Sub-agents are automatically wrapped as tools that the main agent can call.
+ * This demonstrates hierarchical agent composition for complex workflows.
  *
  * What you'll learn:
- * - How to create agents with multiple memory systems
- * - Using SummaryMemory to compress conversation history
- * - Using FileMemory to persist conversations
- * - Working with memory methods (add, search, export, etc.)
- * - Managing conversation history effectively
+ * - How to create sub-agents for specialized tasks
+ * - How to create a main agent that delegates to sub-agents
+ * - Sub-agents automatically become callable tools
+ * - How agents can work together to solve complex problems
  */
 
-userId = "demo-user"
-conversationId = "agent-conversation"
+println( "========================================" )
+println( "Example 22: Agent with Sub-Agents" )
+println( "========================================" )
+println( "" )
 
-// Create an agent with 2 tools
-supportAgent = aiAgent(
-    name: "customer-support",
-    description: "Friendly customer support assistant",
-    instructions: "Help customers with their questions. Be polite and thorough.",
-    model: aiModel()
+// ============================================================================
+// Step 1: Create Specialized Sub-Agents
+// ============================================================================
+
+// Weather specialist agent - provides weather information
+weatherAgent = aiAgent(
+    name: "weather-specialist",
+    description: "A weather expert that can provide weather information and forecasts.",
+    instructions: "You are a weather specialist. Provide accurate weather information and forecasts based on the user's request."
 )
+
+// Calendar specialist agent - manages schedules and events
+calendarAgent = aiAgent(
+    name: "calendar-specialist",
+    description: "A calendar assistant that helps manage schedules and events.",
+    instructions: "You are a calendar assistant. Help users organize their schedules, find available times, and manage events."
+)
+
+println( "✓ Sub-agents created:" )
+println( "  - Weather Specialist: #weatherAgent.getName()#" )
+println( "  - Calendar Specialist: #calendarAgent.getName()#" )
+println( "" )
+
+// ============================================================================
+// Step 2: Create Main Coordinator Agent with Sub-Agents
+// ============================================================================
+
+// The main agent that coordinates tasks by delegating to sub-agents
+coordinatorAgent = aiAgent(
+    name: "coordinator",
+    description: "A coordinator agent that delegates tasks to specialized sub-agents.",
+    instructions: "You are a helpful coordinator. Use your sub-agents to answer questions:
+    - Call the weather-specialist when users ask about weather, forecasts, or climate
+    - Call the calendar-specialist when users ask about scheduling, events, or time management
+    Be helpful and coordinate between the specialists.",
+    model: aiModel(),
+    subAgents: [ weatherAgent, calendarAgent ]
+)
+
+println( "✓ Coordinator agent created with sub-agents" )
+println( "✓ Sub-agents are automatically available as tools" )
+println( "" )
+
+// ============================================================================
+// Step 3: Use the Coordinator Agent
+// ============================================================================
+
+println( "========================================" )
+println( "Testing Coordinator Agent" )
+println( "========================================" )
+println( "" )
+
+// Example 1: Weather question (should delegate to weather-specialist)
+prompt1 = "What's the weather forecast for Miami the next week?"
+println( "👤 User: " & prompt1 )
+response1 = coordinatorAgent.run( prompt1 )
+println( "🤖 Coordinator: " & response1 )
+println( "" )
+
+cliRead( "Press Enter to continue..." )
+
+// Example 2: Calendar question (should delegate to calendar-specialist)
+prompt2 = "I need to schedule a meeting next week. What days work best?"
+println( "👤 User: " & prompt2 )
+response2 = coordinatorAgent.run( prompt2 )
+println( "🤖 Coordinator: " & response2 )
+println( "" )
+
+cliRead( "Press Enter to continue..." )
+
+// Example 3: Complex question (may need both specialists)
+prompt3 = "I want to plan a picnic. When would be a good time next week considering the weather?"
+println( "👤 User: " & prompt3 )
+response3 = coordinatorAgent.run( prompt3 )
+println( "🤖 Coordinator: " & response3 )
+println( "" )
+
+// ============================================================================
+// Step 4: Show Agent Information
+// ============================================================================
+
+println( "========================================" )
+println( "Agent Information" )
+println( "========================================" )
+println( "" )
+
+println( "Coordinator Agent Config:" )
+config = coordinatorAgent.getConfig()
+println( "  Name: " & config.name )
+println( "  Description: " & config.description )
+println( "" )
+
+// Show conversation history
+memoryMessages = coordinatorAgent.getMemoryMessages()
+println( "Conversation History: #memoryMessages.len()# messages" )
+println( "  - System message added" )
+println( "  - Sub-agent tools available for delegation" )
+println( "" )
+
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "✓ Sub-agents are created with aiAgent() just like regular agents" )
+println( "✓ Pass subAgents array to the main agent via the subAgents parameter" )
+println( "✓ Sub-agents automatically become tools the main agent can call" )
+println( "✓ The main agent coordinates work by delegating to specialists" )
+println( "✓ Each agent maintains its own memory and context" )
+println( "========================================" )

@@ -1,0 +1,140 @@
+<bx:script>
+// Check if this is an AJAX request
+	if ( url.keyExists( "ajax" ) || cgi.request_method == 'POST' ) {
+		// Read the JSON body
+		try {
+			requestBody = jsonDeserialize( getHttpRequestData( true ).content.toString() )
+		} catch (any e) {
+			writeOutput( jsonSerialize({
+				success: false,
+				error: "Failed to parse request: " & e.message
+			} ) )
+			abort;
+		}
+
+		// Create MCP client connecting to the local MCP server
+		mcpClient = MCP( "http://localhost:9090/mcp/mcp.bxm" );
+
+		// Determine action and process accordingly
+		action = requestBody.action ?: '';
+
+		switch ( action ) {
+			case 'callTool':
+				callToolAction( requestBody, mcpClient );
+				break;
+
+			case 'callPrompt':
+				callPromptAction( requestBody, mcpClient );
+				break;
+
+			case 'getServerInfo':
+				getServerInfoAction();
+				break;
+
+			default:
+				writeOutput( jsonSerialize( {
+					success: false,
+					error: "Unknown action: " & action
+				} ) )
+		}
+
+		abort;
+	}
+
+	/**
+	 * Call a tool on the MCP server
+	 */
+	function callToolAction( required struct requestBody, required any mcpClient) {
+		var toolName = requestBody.tool ?: '';
+		var params = requestBody.params ?: {};
+
+		if (!toolName.len()) {
+			writeOutput(jsonSerialize({
+				success: false,
+				error: "Tool name is required"
+			}));
+			return;
+		}
+
+		// Call the tool
+		result = mcpClient.send( toolName, params );
+		writeDump( var=result, top = 5, showUDFs = false );
+		abort;
+
+		// Build response
+		response = {
+			success: true,
+			result: result
+		};
+
+		writeOutput( jsonSerialize( response ) );
+	}
+
+	/**
+	 * Call a prompt on the MCP server
+	 */
+	function callPromptAction(required struct request, required any mcpClient) {
+		var promptName = request.prompt ?: '';
+		var params = request.params ?: {};
+
+		if (!promptName.len()) {
+			writeOutput(jsonSerialize({
+				success: false,
+				error: "Prompt name is required"
+			}));
+			return;
+		}
+
+		// Call the prompt
+		result = mcpClient.getPrompt(promptName, params);
+
+		// Build response
+		response = {
+			success: true,
+			result: result
+		};
+
+		writeOutput( jsonSerialize( response ) );
+	}
+
+	/**
+	 * Get MCP server information and statistics
+	 */
+	function getServerInfoAction() {
+		// Check if MCP server exists in application scope
+		if ( application.keyExists( "mcpServer" ) ) {
+			mcpSrv = application.mcpServer;
+
+			// Get server information
+			serverInfo = {
+				name: mcpSrv.getServerName(),
+				description: mcpSrv.getDescription(),
+				version: mcpSrv.getVersion(),
+				toolCount: mcpSrv.tools.len(),
+				promptCount: mcpSrv.prompts.len(),
+				status: "Running",
+				requestCount: 0,
+				errorCount: 0
+			};
+
+			// If stats are available, include them
+			if (structKeyExists(mcpSrv, "stats") && !isNull(mcpSrv.stats)) {
+				stats = mcpSrv.stats;
+				serverInfo.requestCount = stats.totalRequests ?: 0;
+				serverInfo.errorCount = stats.errorCount ?: 0;
+			}
+
+			servers = [serverInfo];
+		} else {
+			servers = [];
+		}
+
+		// Build response
+		response = {
+			success: true,
+			servers: servers
+		};
+
+		writeOutput(jsonSerialize(response));
+	}
+</bx:script>
