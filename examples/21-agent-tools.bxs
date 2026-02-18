@@ -1,25 +1,122 @@
-/**
- * Example 20: Agent with Multiple Memories
- *
- * Agents can use multiple memory systems to maintain conversation history,
- * summarize long conversations, and persist data across sessions.
- * This example demonstrates combining Summary Memory and File Memory.
- *
- * What you'll learn:
- * - How to create agents with multiple memory systems
- * - Using SummaryMemory to compress conversation history
- * - Using FileMemory to persist conversations
- * - Working with memory methods (add, search, export, etc.)
- * - Managing conversation history effectively
- */
+println( "Please wait, building agent tools..." )
 
-userId = "demo-user"
-conversationId = "agent-conversation"
+moduleList = aiTool(
+	"getModuleList",
+	"Give me all the loaded BoxLang modules.",
+	() => getModuleList().keyList()
+)
+
+moduleInfo = aiTool(
+	"getModuleInfo",
+	"Give me detailed information about a specific BoxLang module, including its name, description, and available functions.",
+	( moduleName ) => {
+		return getModuleInfo( moduleName ).delete( "classLoader" )
+	}
+).describeModuleName( "The name of the module you want information about. For example, 'bx-ai' or 'bx-docbox'." )
+
+boxlangInfo = aiTool(
+	"getBoxLangInfo",
+	"Give me information about the current running BoxLang language and its features.",
+	() => {
+		return server.boxlang
+	}
+)
 
 // Create an agent with 2 tools
 supportAgent = aiAgent(
-    name: "customer-support",
-    description: "Friendly customer support assistant",
-    instructions: "Help customers with their questions. Be polite and thorough.",
-    model: aiModel()
+    name: "Boxy! Your BoxLang Support Agent",
+    instructions: "You are an assistant that provides information about the BoxLang language and its loaded features.
+	Use the tools provided to answer questions about modules (getModuleList, getModuleInfo), and general BoxLang information (getBoxLangInfo).
+	If the user asks about loaded modules (including counts), call getModuleList before answering.",
+    model: aiModel( "claude" ),
+	tools: [ moduleList, moduleInfo, boxlangInfo ]
 )
+
+// Add loop so we can have a conversation with the agent
+while ( true ) {
+	// Get user input
+	userInput = cliRead( "Ask the agent about BoxLang (or type 'exit' or 'q' to quit): " ).toLowerCase().trim()
+
+	if ( userInput == "exit" || userInput == "q" ) {
+		println( "Goodbye!" )
+		break
+	}
+
+	if( userInput == "clear" ){
+		println( "Clearing conversation history..." )
+		supportAgent.clearMemory()
+		cliclear()
+		continue
+	}
+
+	if( userInput == "config" ){
+		println( "Current agent configuration:" )
+		println( supportAgent.getConfig() )
+		continue
+	}
+
+	if( userInput == "history" ){
+		memoryMessages = supportAgent.getMemoryMessages()
+		println( "Conversation history (#memoryMessages.len()#): " )
+		println( memoryMessages )
+		continue
+	}
+
+	// Show that we're sending the user input to the agent
+	println( "Sending to agent, please wait..." )
+	print( "🤖 Agent: " )
+
+	// Stream response with a thinking animation while waiting for content
+	reasoningPhase = true
+	contentStarted = false
+	hasStarted = false
+	dotCount = 0
+	responseText = ""
+	sawToolCall = false
+	thinkingStates = [ "🤔 Thinking.  ", "🤔 Thinking.. ", "🤔 Thinking..." ]
+
+	// result = supportAgent.run( userInput )
+	// println( result )
+
+	supportAgent.stream(
+		( chunk ) => {
+			// Show model info on first chunk
+			if ( !hasStarted ) {
+				println( "Starting to receive response from model: #chunk.model#" )
+				hasStarted = true
+			}
+
+			var content = chunk.choices?.first()?.delta?.content ?: ""
+        	var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
+			var toolCalls = chunk.choices?.first()?.delta?.tool_calls ?: []
+
+			if ( toolCalls.len() && !sawToolCall ) {
+				println( "🔧 Tool calls detected in stream..." )
+				sawToolCall = true
+			}
+
+			// During reasoning phase, show animated thinking indicator
+			if ( reasoning != "" && reasoningPhase ) {
+				dotCount++
+				var state = thinkingStates[ ( dotCount % 3 ) + 1 ]
+				print( "#char(13)##state#" )  // char(13) is carriage return
+			}
+
+			// When content starts, clear thinking indicator and start response
+			if ( content != "" && !contentStarted ) {
+				print( "#char(13)#               #char(13)#" )  // Clear the thinking line
+				contentStarted = true
+				reasoningPhase = false
+			}
+
+			responseText &= content
+			print( content )
+		},
+		userInput
+	)
+
+	println( "" )
+	println( "" )
+	println( "=====================================================================" )
+	println( "" )
+}
