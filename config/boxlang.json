@@ -36,7 +36,7 @@
                 // If true, the AI request will be logged into the ai.log
                 "logRequest" : false,
                 // If true, the AI request will be logged to the console
-                "logRequestToConsole" : false,
+                "logRequestToConsole" : true,
                 // If true, the AI response will be logged into the ai.log
                 "logResponse" : false,
                 // If true, the AI response will be logged to the console

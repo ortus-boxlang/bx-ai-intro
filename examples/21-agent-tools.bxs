@@ -28,7 +28,7 @@ supportAgent = aiAgent(
     instructions: "You are an assistant that provides information about the BoxLang language and its loaded features.
 	Use the tools provided to answer questions about modules (getModuleList, getModuleInfo), and general BoxLang information (getBoxLangInfo).
 	If the user asks about loaded modules (including counts), call getModuleList before answering.",
-    model: aiModel( "claude" ),
+    model: aiModel(),
 	tools: [ moduleList, moduleInfo, boxlangInfo ]
 )
 
