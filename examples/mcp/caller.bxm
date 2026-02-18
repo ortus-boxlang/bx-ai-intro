@@ -58,8 +58,6 @@
 
 		// Call the tool
 		result = mcpClient.send( toolName, params );
-		writeDump( var=result, top = 5, showUDFs = false );
-		abort;
 
 		// Build response
 		response = {

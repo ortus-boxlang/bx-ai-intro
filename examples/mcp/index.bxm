@@ -259,7 +259,7 @@
 				</div>
 			</div>
 
-			<div class="col-lg-6 mb-4">
+			<!--- <div class="col-lg-6 mb-4">
 				<div class="card h-100">
 					<div class="card-header">
 						<i class="bi bi-info-circle"></i> Tool 2: Get Module Info
@@ -378,7 +378,7 @@
 						</div>
 					</div>
 				</div>
-			</div>
+			</div> --->
 		</div>
 	</div>
 
