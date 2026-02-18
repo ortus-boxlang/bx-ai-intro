@@ -1,13 +1,8 @@
 # ⚡︎ BoxLang AI Intro Examples
 
-```
-|:------------------------------------------------------:|
-| ⚡︎ B o x L a n g ⚡︎
-| Dynamic : Modular : Productive
-|:------------------------------------------------------:|
-```
+<img src="examples/assets/bxai-logo-full-light-L.svg" alt="bx-ai logo" width="500">
 
-> **Comprehensive Examples for the [bx-ai Module](https://github.com/ortus-boxlang/bx-ai)** – A progressive tutorial workspace showcasing everything from basic chat to advanced streaming, multimodal content, tool integration, and structured outputs.
+**Comprehensive Examples for the [bx-ai Module](https://github.com/ortus-boxlang/bx-ai)** – A progressive tutorial workspace showcasing everything from basic chat to advanced streaming, multimodal content, tool integration, and structured outputs.
 
 <blockquote>
 	<a href="https://ai.boxlang.io">ai.boxlang.io</a> |
@@ -111,6 +106,11 @@ Each example demonstrates specific features. Run them in order to build understa
 | # | Example | Topics |
 |---|---------|--------|
 | 19 | [Basic Agent](examples/19-basic-agent.bxs) | Creating autonomous AI agents |
+| 20 | [Agent Memories](examples/20-agent-memories.bxs) | Persistent memory and context recall |
+| 21 | [Agent Tools](examples/21-agent-tools.bxs) | Tool-enabled agents and function execution |
+| 22 | [Agent Subagents](examples/22-agent-subagents.bxs) | Delegation and multi-agent collaboration |
+| 23 | [Agent Scheduler](examples/23-agent-scheduler.bx) | Scheduled and recurring agent tasks |
+
 
 ---
 
