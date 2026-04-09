@@ -27,19 +27,19 @@ function getProductPrice( required string productName ) {
 	return products[ productName.lcase() ] ?: "Product not found"
 }
 
-// Create a tool for product lookup
+// Create a tool for product lookup with auto-registration on the Tool Registry
 priceLookupTool = aiTool(
 	"getPrice",
 	"Look up the price of a product by name",
 	getProductPrice
 ).describeProductName( "Enter the name of the product to get its price" )
 
-// Pipeline with tool
+// Pipeline with tool using the name only - AI will automatically use the tool when needed from the registry
 prompt = "What are the prices of a laptop and a mouse?"
 result = aiMessage( prompt )
 	.system( "You are a helpful product assistant. Use the getPrice tool to look up prices." )
 	.to(
-		aiModel().bindTools( priceLookupTool )
+		aiModel().bindTools( "getPrice" )
 	)
 	.run()
 

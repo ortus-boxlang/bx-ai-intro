@@ -1,0 +1,172 @@
+/**
+ * Example 23: Agent Skills
+ *
+ * Skills inject reusable domain knowledge into an agent's system context.
+ * Think of them as modular expertise — BoxLang syntax, code review rules,
+ * security guidelines — that you mix and match across agents without
+ * duplicating instructions.
+ *
+ * Two injection modes:
+ *   skills:          Always-on  — full content injected into every system message
+ *   availableSkills: Lazy-load  — only the index is shown; the AI calls loadSkill()
+ *                                 to pull full content when it actually needs it
+ *
+ * What you'll learn:
+ * - How to create an inline skill (no file needed)
+ * - How to load a skill from a file
+ * - How to use always-on skills (skills:)
+ * - How to use lazy-loaded skills (availableSkills:)
+ * - How to combine both modes on one agent
+ */
+
+println( "========================================" )
+println( "Example 23: Agent Skills" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Step 1: Inline Skill — created directly in code, no file required
+// ============================================================================
+println( "--- Step 1: Inline Skill ---" )
+println( "" )
+
+toneSkill = aiSkill(
+    name       : "professional-tone",
+    description: "Maintain a professional yet friendly tone in all responses.",
+    content    : "
+        Always greet the user by name if known.
+        Keep responses concise — three paragraphs maximum.
+        Avoid jargon unless the user is clearly technical.
+        End every answer with a short, encouraging closing sentence.
+    "
+)
+
+println( "✓ Inline skill created: #toneSkill.getName()#" )
+println( "  Description: #toneSkill.getDescription()#" )
+println( "" )
+
+// ============================================================================
+// Step 2: File-Based Skill — loaded from .ai/skills/boxlang-expert/SKILL.md
+// ============================================================================
+println( "--- Step 2: File-Based Skill ---" )
+println( "" )
+
+boxlangSkill = aiSkill( "/.ai/skills/boxlang-expert/SKILL.md" )
+
+println( "✓ File skill loaded: #boxlangSkill.getName()#" )
+println( "  Description: #boxlangSkill.getDescription()#" )
+println( "" )
+
+// ============================================================================
+// Step 3: Always-On Agent — skills are injected into every system message
+// ============================================================================
+println( "--- Step 3: Always-On Skills Agent ---" )
+println( "" )
+
+//  Both toneSkill and boxlangSkill are always present in the system context.
+//  Good for globally relevant knowledge the agent always needs.
+boxlangAssistant = aiAgent(
+    name        : "BoxLang Assistant",
+    instructions: "You are a helpful BoxLang coding assistant. Answer questions about BoxLang concisely.",
+    model       : aiModel(),
+    skills      : [ toneSkill, boxlangSkill ]
+)
+
+println( "✓ Agent created with #2# always-on skills" )
+
+print( "👤 User: How do I read a line from the CLI in BoxLang?" )
+println( "" )
+print( "🤖 Agent: " )
+response1 = boxlangAssistant.run( "How do I read a line from the CLI in BoxLang?" )
+println( response1 )
+println( "" )
+
+cliread( "Press enter to continue to the next section..." )
+
+// ============================================================================
+// Step 4: Lazy-Loaded Skills — full content only pulled when the AI needs it
+// ============================================================================
+println( "--- Step 4: Lazy-Loaded Skills Agent ---" )
+println( "" )
+
+//  Load entire directory.  The agent sees only names + descriptions up front.
+//  When the user asks a code-review question, the AI calls loadSkill("code-review")
+//  to pull in the full guidelines.  The security skill is pulled if needed too.
+reviewAgent = aiAgent(
+    name           : "Code Reviewer",
+    instructions   : "You are a BoxLang code reviewer and security auditor.
+        Check code for correctness, style, and security issues.
+        Use your available skills to guide your analysis.",
+    model          : aiModel(),
+    availableSkills: aiSkill( "/.ai/skills" )   // scans entire directory
+)
+
+println( "✓ Agent created with lazy-loaded skills from .ai/skills/" )
+println( "  (The agent sees the skill index; full content is pulled on demand)" )
+println( "" )
+
+codeSnippet = "
+apiKey = env[ 'MY_KEY' ]
+result = queryExecute( 'SELECT * FROM users WHERE id=' & url.id )
+println( result )
+"
+
+print( "👤 User: Review this code for issues:" )
+println( codeSnippet )
+print( "🤖 Agent Response: " )
+response2 = reviewAgent.run( "Review this code for issues: " & codeSnippet )
+println( response2 )
+println( "" )
+
+cliread( "Press enter to continue to the next section..." )
+
+// ============================================================================
+// Step 5: Combined — always-on core skills + lazy specialty skills
+// ============================================================================
+println( "--- Step 5: Combined Always-On + Lazy Skills ---" )
+println( "" )
+
+//  Core BoxLang knowledge is always injected (small, always relevant).
+//  Specialty skills (code-review, security) are lazy — only loaded when asked.
+platformAssistant = aiAgent(
+    name           : "Platform Assistant",
+    instructions   : "You are a versatile BoxLang platform assistant.
+        You always have BoxLang expertise available.
+        For code reviews, load the code-review skill.
+        For security questions, load the security skill.",
+    model          : aiModel(),
+    skills         : [ aiSkill( "/.ai/skills/boxlang-expert/SKILL.md" ) ],  // always-on
+    availableSkills: [
+        aiSkill( "/.ai/skills/code-review/SKILL.md" ),   // lazy
+        aiSkill( "/.ai/skills/security/SKILL.md" )        // lazy
+    ]
+)
+
+println( "✓ Combined agent created:" )
+println( "  Always-on  → boxlang-expert" )
+println( "  Lazy       → code-review, security" )
+println( "" )
+
+prompt3 = "Write me a BoxLang script that calls aiChat() and prints the response."
+print( "👤 User: #prompt3#" )
+println( "" )
+print( "🤖 Agent: " )
+response3 = platformAssistant.run( prompt3 )
+println( response3 )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiSkill() creates skills inline or loads them from .md files" )
+println( "2. skills: (always-on) injects full content into every system message" )
+println( "3. availableSkills: (lazy) shows only an index; AI pulls full content on demand" )
+println( "4. aiSkill( directory ) scans an entire folder for SKILL.md files" )
+println( "5. Combine both modes: always-on for core knowledge, lazy for specialties" )
+println( "6. withSkills() / withAvailableSkills() add skills after agent construction" )
+println( "" )
+println( "TIP: Store skill files under .ai/skills/<name>/SKILL.md by convention." )
+println( "" )

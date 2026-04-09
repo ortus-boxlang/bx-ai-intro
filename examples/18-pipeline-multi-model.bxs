@@ -4,15 +4,22 @@ println( "========================================" )
 println( "" )
 
 result = aiMessage( "Write code to ${task}" )
+	// System instructions and transformations for the first model
 	.system( "You are a helpful coding assistant, that will write the code and return it ONLY" )
+	// Specify the first model and give it a name for reference
 	.toDefaultModel()
 	.withName( "coder" )
+	// Transform the response to pass only the code to the next step
 	.transform( response => { code : response }  ) // Remove if using _input
+	// Pipe the output to a second model for review
+	// The second model can reference the output of the first step using the name "coder"
+	// or use _input if the transformation step is removed
 	.pipe(
 		// aiMessage( "Review the provided code: ${_input}" )
 		aiMessage( "Review the provided code: ${code}" )
 			.toModel( "claude" ).withName( "reviewer" )
 	)
+	// Run the pipeline with a specific task
 	.run( { task: "sort an array of numbers in BoxLang" } )
 
 println( result )
