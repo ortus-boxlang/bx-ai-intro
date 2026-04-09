@@ -1,0 +1,9 @@
+class{
+
+	function main(){
+		var args = CLIGetArgs()
+		var positional = args.positional
+		var options = args.options
+	}
+
+}
