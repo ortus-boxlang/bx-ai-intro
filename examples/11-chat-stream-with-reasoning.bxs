@@ -23,34 +23,52 @@ prompt = "Explain why the sky is blue in one sentence"
 println( "👤 User: #prompt#" )
 println( "🤖  AI: " )
 
-reasoningPhase = true
+// Track stream phases
+firstChunkReceived = false
 contentStarted = false
-dotCount = 0
-thinkingStates = [ "🤔 Thinking.  ", "🤔 Thinking.. ", "🤔 Thinking..." ]
+streamCompleted = false
+
+println( "📡 Sending request..." )
+
+// Waiting animation shown after sending request and before first chunk
+waitingStates = [
+    "⏳ Waiting for first chunk.  ",
+    "⏳ Waiting for first chunk.. ",
+    "⏳ Waiting for first chunk..."
+]
+
+// Animate waiting states in the background until first chunk is received
+spinnerFuture = runAsync( () => {
+    var stateIndex = 0
+
+    while ( !firstChunkReceived && !streamCompleted ) {
+        print( "#char(13)##waitingStates[ stateIndex + 1 ]#" )
+        sleep( 180 )
+        stateIndex = ( stateIndex + 1 ) % waitingStates.len()
+    }
+} )
 
 aiChatStream(
     prompt,
     ( chunk ) => {
-        var content = chunk.choices?.first()?.delta?.content ?: ""
-        var reasoning = chunk.choices?.first()?.delta?.reasoning ?: ""
-
-        // During reasoning phase, show animated thinking indicator
-        if ( reasoning != "" && reasoningPhase ) {
-            dotCount++
-            var state = thinkingStates[ ( dotCount % 3 ) + 1 ]
-            print( "#char(13)##state#" )  // char(13) is carriage return
+        if ( !firstChunkReceived ) {
+            firstChunkReceived = true
         }
+
+        var content = chunk.choices?.first()?.delta?.content ?: ""
 
         // When content starts, clear thinking indicator and start response
         if ( content != "" && !contentStarted ) {
             print( "#char(13)#               #char(13)#" )  // Clear the thinking line
             contentStarted = true
-            reasoningPhase = false
         }
 
         print( content )
     }
 )
+
+streamCompleted = true
+spinnerFuture.get()
 
 println( "" )
 println( "" )
@@ -61,11 +79,11 @@ println( "" )
 println( "========================================" )
 println( "KEY TAKEAWAYS:" )
 println( "========================================" )
-println( "1. Some models provide reasoning phases before final responses" )
-println( "2. Use chunk.choices?.first()?.delta?.reasoning to detect reasoning" )
-println( "3. Animated indicators (🤔 Thinking...) improve user experience" )
-println( "4. Use char(13) (carriage return) for in-place text updates" )
-println( "5. Clear thinking indicators when actual content starts" )
+println( "1. Print 'Sending request...' once before starting the stream" )
+println( "2. Animate a 'Waiting for first chunk...' status until data arrives" )
+println( "3. Use runAsync() + sleep() for non-blocking waiting animation" )
+println( "4. Use char(13) (carriage return) for in-place updates" )
+println( "5. Clear the waiting indicator when content starts" )
 println( "" )
 println( "TIP: Reasoning display shows users the AI is 'thinking' through the problem!" )
 println( "" )

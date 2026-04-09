@@ -21,7 +21,7 @@ println( "" )
 println( "--- Example 1: Basic Streaming with UX Enhancements ---" )
 println( "" )
 
-prompt = "Tell me a medium long joke about programming"
+prompt = "Tell me a short joke about programming"
 println( "👤  User: #prompt#" )
 println( "🤖  AI: " )
 
@@ -35,7 +35,8 @@ aiChatStream(
     ( chunk ) => {
         // Show model info on first chunk
         if ( !hasStarted ) {
-			println( "Starting to receive response from model: #chunk.model#" )
+			println( "👟 Starting to receive response from model: #chunk.model#" )
+			println()
             hasStarted = true
         }
 

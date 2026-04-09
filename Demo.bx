@@ -7,24 +7,24 @@
 class {
 
 	// ── ANSI codes ────────────────────────────────────────────────────────────
-	variables.E       = chr( 27 )
-	variables.RESET   = chr( 27 ) & "[0m"
-	variables.BOLD    = chr( 27 ) & "[1m"
-	variables.DIM     = chr( 27 ) & "[2m"
-	variables.CYAN    = chr( 27 ) & "[36m"
-	variables.BCYAN   = chr( 27 ) & "[96m"
-	variables.YELLOW  = chr( 27 ) & "[33m"
-	variables.BYELLOW = chr( 27 ) & "[93m"
-	variables.GREEN   = chr( 27 ) & "[32m"
-	variables.BGREEN  = chr( 27 ) & "[92m"
-	variables.BLUE    = chr( 27 ) & "[34m"
-	variables.BBLUE   = chr( 27 ) & "[94m"
-	variables.MAGENTA = chr( 27 ) & "[35m"
-	variables.BWHITE  = chr( 27 ) & "[97m"
-	variables.RED     = chr( 27 ) & "[31m"
-	variables.BRED    = chr( 27 ) & "[91m"
-	variables.BG_BLUE = chr( 27 ) & "[44m"
-	variables.CLEAR   = chr( 27 ) & "[2J" & chr( 27 ) & "[H"
+	variables.E       = char( 27 )
+	variables.RESET   = char( 27 ) & "[0m"
+	variables.BOLD    = char( 27 ) & "[1m"
+	variables.DIM     = char( 27 ) & "[2m"
+	variables.CYAN    = char( 27 ) & "[36m"
+	variables.BCYAN   = char( 27 ) & "[96m"
+	variables.YELLOW  = char( 27 ) & "[33m"
+	variables.BYELLOW = char( 27 ) & "[93m"
+	variables.GREEN   = char( 27 ) & "[32m"
+	variables.BGREEN  = char( 27 ) & "[92m"
+	variables.BLUE    = char( 27 ) & "[34m"
+	variables.BBLUE   = char( 27 ) & "[94m"
+	variables.MAGENTA = char( 27 ) & "[35m"
+	variables.BWHITE  = char( 27 ) & "[97m"
+	variables.RED     = char( 27 ) & "[31m"
+	variables.BRED    = char( 27 ) & "[91m"
+	variables.BG_BLUE = char( 27 ) & "[44m"
+	variables.CLEAR   = char( 27 ) & "[2J" & char( 27 ) & "[H"
 
 	// ── Entry Point ───────────────────────────────────────────────────────────
 	function main(){
@@ -66,21 +66,15 @@ class {
 		println( "" )
 		println( "    " & BOLD & BYELLOW & "BoxLang AI Module" & RESET & DIM & " — Interactive Demo Runner" & RESET )
 		println( "    " & DIM & "⚡ Powered by bx-ai | Ortus Solutions" & RESET )
-		println( "" )
 		println( sep )
-		println( "" )
-		println( "  " & DIM & " ↑ ↓  Navigate    Enter  Run    q  Quit" & RESET )
-		println( "" )
+		println( "  " & DIM & " ↑ ↓  Navigate  ## Jump    Enter -> Run    q -> Quit" & RESET )
 	}
 
 	// ── Discover Examples ─────────────────────────────────────────────────────
 	private function getExamples(){
-		var dir   = expandPath( "./examples" )
-		var files = directoryList( dir, false, "array", "*.bxs" )
-		files.addAll( directoryList( dir, false, "array", "*.bx" ) )
-		files.sort( "text" )
-
-		return files.map( function( f ){
+		return directoryList( expandPath( "./examples" ), false, "array", "*.bxs" )
+			.sort()
+			.map( ( f ) =>{
 			var fileName = listLast( f, "/\" )
 			// Strip leading digits+dash and extension to build a human label
 			var name = fileName
@@ -107,36 +101,72 @@ class {
 		var selected = 1
 		var running  = true
 		var tty      = ""
+		var scrollTop = 1
+		var maxVisibleRows = 10
+		var numInput = ""
 
 		setRawMode( true )
 
 		try {
 			tty = createObject( "java", "java.io.FileInputStream" ).init( "/dev/tty" )
-			// Save cursor position, then draw initial menu
-			print( E & "[s" )
-			drawMenu( examples, selected )
+			// Draw initial menu
+			drawMenu( examples, selected, scrollTop, maxVisibleRows )
 
 			while( running ){
 				var key = readKey( tty )
 
 				switch( key ){
 					case "UP":
-						if( selected > 1 ) selected--
-						print( E & "[u" )
-						drawMenu( examples, selected )
+						numInput = ""
+						if( selected > 1 ){
+							selected--
+							if( selected < scrollTop ) scrollTop = selected
+							drawMenu( examples, selected, scrollTop, maxVisibleRows )
+						}
 						break
 					case "DOWN":
-						if( selected < examples.len() ) selected++
-						print( E & "[u" )
-						drawMenu( examples, selected )
+						numInput = ""
+						if( selected < examples.len() ){
+							selected++
+							if( selected > scrollTop + maxVisibleRows - 1 ){
+								scrollTop = selected - maxVisibleRows + 1
+							}
+							drawMenu( examples, selected, scrollTop, maxVisibleRows )
+						}
 						break
 					case "ENTER":
-						running = false
+						if( len( numInput ) ){
+							var demoNum = val( numInput )
+							var found = jumpToDemo( examples, demoNum )
+							if( found > 0 ){
+								selected = found
+								// Adjust scroll to show selected
+								if( selected < scrollTop ) scrollTop = selected
+								if( selected > scrollTop + maxVisibleRows - 1 ){
+									scrollTop = selected - maxVisibleRows + 1
+								}
+								drawMenu( examples, selected, scrollTop, maxVisibleRows )
+								numInput = ""
+							}
+						} else {
+							running = false
+						}
 						break
 					case "Q":
-						tty.close()
+						if( !isSimpleValue( tty ) ) tty.close()
 						setRawMode( false )
 						return null
+					default:
+						// Handle numeric input
+						if( key.reFind( "^\d$" ) ){
+							numInput &= key
+							// Limit to 2 digits
+							if( len( numInput ) > 2 ){
+								numInput = right( numInput, 2 )
+							}
+						} else if( key == "BACKSPACE" || key == chr( 127 ) ){
+							numInput = left( numInput, max( 0, len( numInput ) - 1 ) )
+						}
 				}
 			}
 		} finally {
@@ -147,17 +177,43 @@ class {
 		return examples[ selected ]
 	}
 
-	// ── Render Menu Lines ─────────────────────────────────────────────────────
-	private function drawMenu( required array examples, required numeric selected ){
-		var output = ""
+	// ── Jump to Demo by Number ────────────────────────────────────────────────
+	private function jumpToDemo( required array examples, required numeric demoNum ){
 		for( var i = 1; i <= examples.len(); i++ ){
-			output &= E & "[2K"   // clear entire line
-			if( i == selected ){
-				output &= "  " & BG_BLUE & BOLD & BWHITE & "  ▶  " & examples[ i ].label & "  " & RESET & chr( 10 )
-			} else {
-				output &= "  " & DIM & "     " & examples[ i ].label & RESET & chr( 10 )
+			var num = examples[ i ].label.reReplace( "^(\d+).*", "\1" )
+			if( val( num ) == demoNum ){
+				return i
 			}
 		}
+		return 0
+	}
+
+	// ── Render Menu Lines ─────────────────────────────────────────────────────
+	private function drawMenu( required array examples, required numeric selected, required numeric scrollTop, required numeric maxVisible ){
+		var output = ""
+		var menuStartRow = 15
+		var scrollBottom = min( scrollTop + maxVisible - 1, examples.len() )
+
+		// Move cursor to the menu start row
+		output = E & "[" & menuStartRow & ";1H"
+
+		for( var i = scrollTop; i <= scrollBottom; i++ ){
+			output &= E & "[2K"   // clear entire line
+			if( i == selected ){
+				output &= "  " & BG_BLUE & BOLD & BWHITE & "▶  " & examples[ i ].label & "  " & RESET
+			} else {
+				output &= "  " & DIM & "   " & examples[ i ].label & RESET
+			}
+			if( i < scrollBottom ){
+				output &= E & "[1E"   // move to beginning of next line
+			}
+		}
+
+		// Clear remaining rows in the viewport
+		for( var j = scrollBottom + 1; j <= scrollTop + maxVisible - 1; j++ ){
+			output &= E & "[1E" & E & "[2K"
+		}
+
 		print( output )
 	}
 
@@ -178,9 +234,12 @@ class {
 		}
 		// Enter
 		if( b1 == 13 || b1 == 10 ) return "ENTER"
+		// Backspace
+		if( b1 == 127 ) return "BACKSPACE"
 		// q / Q / Ctrl-C
 		if( b1 == 113 || b1 == 81 || b1 == 3 ) return "Q"
-		return chr( b1 )
+		// Return all other characters as-is (including digits)
+		return char( b1 )
 	}
 
 	// ── Toggle Raw Terminal Mode ──────────────────────────────────────────────
@@ -219,7 +278,7 @@ class {
 
 		println( "" )
 		println( "  " & DIM & repeatString( "─", 52 ) & RESET )
-		println( "  " & BOLD & BGREEN & "✓ Done!  Press Enter to return to the menu..." & RESET )
+		println( "  " & BOLD & BGREEN & "✓ Done!  Press Enter to return..." & RESET )
 
 		// Block until Enter (reads from /dev/tty so stdin passthrough doesn't interfere)
 		var tty = createObject( "java", "java.io.FileInputStream" ).init( "/dev/tty" )
