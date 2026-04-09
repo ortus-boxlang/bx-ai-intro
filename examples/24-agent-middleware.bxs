@@ -1,0 +1,169 @@
+import bxModules.bxai.models.middleware.core.LoggingMiddleware
+import bxModules.bxai.models.middleware.core.FlightRecorderMiddleware
+import bxModules.bxai.models.middleware.core.GuardrailMiddleware
+import bxModules.bxai.models.middleware.core.HumanInTheLoopMiddleware
+
+/**
+ * Example 24: Agent Middleware
+ *
+ * Middleware intercepts agent lifecycle hooks without changing the agent's core logic.
+ * You can use it for logging, auditing, blocking unsafe tool calls, and pausing
+ * execution for human approval.
+ *
+ * What you'll learn:
+ * - How to attach built-in middleware to an agent
+ * - How to use LoggingMiddleware for observability
+ * - How to use FlightRecorderMiddleware to capture a replayable execution trace
+ * - How to use GuardrailMiddleware to block risky tool calls
+ * - How to use HumanInTheLoopMiddleware to suspend and resume an agent run
+ */
+
+println( "========================================" )
+println( "Example 24: Agent Middleware" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Shared Tools
+// ============================================================================
+
+getOrderStatus = aiTool(
+	"getOrderStatus",
+	"Look up the status for an order number.",
+	( orderId ) => {
+		return "Order #orderId# is packed and will ship today."
+	}
+).describeOrderId( "The order number to look up, for example 10042." )
+
+runSql = aiTool(
+	"runSql",
+	"Execute a SQL query against the reporting database.",
+	( query ) => {
+		return "Executed query safely: #query#"
+	}
+).describeQuery( "The SQL query to execute." )
+
+deleteCustomer = aiTool(
+	"deleteCustomer",
+	"Delete a customer record by ID.",
+	( customerId ) => {
+		return "Customer #customerId# deleted."
+	}
+).describeCustomerId( "The customer ID to delete." )
+
+deployRelease = aiTool(
+	"deployRelease",
+	"Deploy a release to production.",
+	( version, environment ) => {
+		return "Deployment started for version #version# to #environment#."
+	}
+)
+	.describeVersion( "The version to deploy, for example 2.4.1." )
+	.describeEnvironment( "The target environment, such as staging or production." )
+
+// ============================================================================
+// Example 1: Logging + Flight Recorder
+// ============================================================================
+
+println( "----------------------------------------------------------------------" )
+println( "--- Example 1: Logging + Flight Recorder ---" )
+println( "----------------------------------------------------------------------" )
+println( "" )
+
+requestLogger = new LoggingMiddleware(
+	logToFile   : true,
+	logToConsole: true,
+	logLevel    : "info",
+	prefix      : "[Order Agent]"
+)
+
+flightRecorder = new FlightRecorderMiddleware(
+	mode       : "record",
+	fixturePath: "/.ai/flight-recorder/example-24-order-agent.json"
+)
+
+orderAgent = aiAgent(
+	name        : "order-agent",
+	instructions: "You help users with order lookups. Use the getOrderStatus tool when an order number is provided.",
+	model       : aiModel(),
+	tools       : [ getOrderStatus ],
+	middleware  : [ requestLogger, flightRecorder ]
+)
+
+prompt1 = "Use the getOrderStatus tool to check order 10042 and summarize the result in one sentence."
+println( "👤 User: #prompt1#" )
+println( "----------------------------------------------------------------------" )
+response1 = orderAgent.run( prompt1 )
+println( "🤖 Agent: #response1#" )
+println( "----------------------------------------------------------------------" )
+println( "Middleware registered: #orderAgent.listMiddleware().toString()#" )
+println( "Recorded interactions: #flightRecorder.getTape().interactions.len()#" )
+println( "Fixture written to: #flightRecorder.getEffectiveFixturePath()#" )
+println( "----------------------------------------------------------------------" )
+
+println()
+cliread( "Press enter to continue to the next section..." )
+
+// ============================================================================
+// Example 2: Guardrails for Tool Safety
+// ============================================================================
+
+println( "----------------------------------------------------------------------" )
+println( "--- Example 2: Guardrails for Tool Safety ---" )
+println( "----------------------------------------------------------------------" )
+println( "" )
+
+guardrails = new GuardrailMiddleware(
+	blockedTools: [ "deleteCustomer" ],
+	argPatterns : {
+		"runSql": [
+			{ "query": "(?i)drop|truncate|delete" }
+		]
+	}
+)
+
+safeOpsAgent = aiAgent(
+	name        : "safe-ops-agent",
+	instructions: "You are an operations assistant.
+		Use the available tools when the user explicitly asks for a database or customer operation.
+		If a tool is blocked, explain that the request was blocked by safety rules.",
+	model       : aiModel(),
+	tools       : [ runSql, deleteCustomer ],
+	middleware  : [
+		new LoggingMiddleware( logToConsole: true, prefix: "[Safe Ops]" ),
+		guardrails
+	]
+)
+
+prompt2 = "Use the deleteCustomer tool to remove customer 42."
+println( "👤 User: #prompt2#" )
+println( "----------------------------------------------------------------------" )
+response2 = safeOpsAgent.run( prompt2 )
+println( "🤖 Agent: #response2#" )
+println( "" )
+
+println( "----------------------------------------------------------------------" )
+prompt2b = "Use the runSql tool to execute this query exactly: DELETE FROM customers WHERE id = 42"
+println( "👤 User: #prompt2b#" )
+println( "----------------------------------------------------------------------" )
+response2b = safeOpsAgent.run( prompt2b )
+println( "🤖 Agent: #response2b#" )
+println( "" )
+println( "----------------------------------------------------------------------" )
+
+cliread( "Press enter to continue to the next section..." )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Middleware is attached with middleware: [ ... ] on aiAgent()" )
+println( "2. LoggingMiddleware gives you lifecycle visibility in console and logs" )
+println( "3. FlightRecorderMiddleware captures a replayable execution trace" )
+println( "4. GuardrailMiddleware blocks unsafe tool calls before they execute" )
+println( "" )
+println( "TIP: Put logging first so it can observe the entire middleware chain." )
+println( "" )

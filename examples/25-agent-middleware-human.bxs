@@ -1,0 +1,71 @@
+import bxModules.bxai.models.middleware.core.LoggingMiddleware
+import bxModules.bxai.models.middleware.core.FlightRecorderMiddleware
+import bxModules.bxai.models.middleware.core.GuardrailMiddleware
+import bxModules.bxai.models.middleware.core.HumanInTheLoopMiddleware
+
+/**
+ * Example 24: Agent Middleware
+ *
+ * Middleware intercepts agent lifecycle hooks without changing the agent's core logic.
+ * You can use it for logging, auditing, blocking unsafe tool calls, and pausing
+ * execution for human approval.
+ *
+ * What you'll learn:
+ * - How to attach built-in middleware to an agent
+ * - How to use LoggingMiddleware for observability
+ * - How to use FlightRecorderMiddleware to capture a replayable execution trace
+ * - How to use GuardrailMiddleware to block risky tool calls
+ * - How to use HumanInTheLoopMiddleware to suspend and resume an agent run
+ */
+
+println( "========================================" )
+println( "Example 25: Agent Middleware with Human in the Loop" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Shared Tools
+// ============================================================================
+
+deployRelease = aiTool(
+	"deployRelease",
+	"Deploy a release to production.",
+	( version, environment ) => {
+		return "Deployment started for version #version# to #environment#."
+	}
+)
+	.describeVersion( "The version to deploy, for example 2.4.1." )
+	.describeEnvironment( "The target environment, such as staging or production." )
+
+// ============================================================================
+// Example 1: Human in the Loop (Suspend + Resume)
+// ============================================================================
+
+println( "----------------------------------------------------------------------" )
+println( "--- Example 1: Human In The Loop ---" )
+println( "----------------------------------------------------------------------" )
+println( "" )
+
+approvalThreadId = "example-24-approval-thread"
+
+approvalAgent = aiAgent(
+	name         : "approval-agent",
+	instructions : "You coordinate deployments.
+		Use the deployRelease tool when the user asks to deploy software.",
+	model        : aiModel(),
+	tools        : [ deployRelease ],
+	checkpointer : aiMemory( "cache" ),
+	middleware   : [
+		new LoggingMiddleware( logToConsole: true, prefix: "[Approval Agent]" ),
+		new HumanInTheLoopMiddleware(
+			toolsRequiringApproval: [ "deployRelease" ],
+			mode                 : "cli"
+		)
+	]
+)
+
+prompt3 = "Deploy version 2.4.1 to production."
+println( "👤 User: #prompt3#" )
+println( "----------------------------------------------------------------------" )
+approvalAgent.run( prompt3, {}, { threadId: approvalThreadId } )
+println( "" )
