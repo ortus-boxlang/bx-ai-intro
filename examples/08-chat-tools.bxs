@@ -34,11 +34,11 @@ weatherTool = aiTool(
             "wind": "5 mph NW"
         }
     }
-).describeLocation( "City name, e.g. Boston, MA" )  // Describe the parameter
+)
 
 // Use the tool with aiChat
 result = aiChat(
-    "What's the weather in Boston?",
+    "What's the weather in Boston? Use the provided weather tool to get the current conditions.",
     { tools: [ weatherTool ] }
 )
 
@@ -85,7 +85,7 @@ calcTool = aiTool(
 
 // Use the calculator tool
 result = aiChat(
-    "What is 60 divided by 4, and then multiplied by 2?",
+    "What is 60 divided by 4, and then multiplied by 2? Use the provided calculator tool to perform the calculations.",
     { tools: [ calcTool ] }
 )
 

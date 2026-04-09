@@ -1,9 +1,236 @@
-class{
+/**
+ * BoxLang AI Module — Interactive Demo Runner
+ *
+ * Navigate with ↑ ↓ arrows, press Enter to run an example, q to quit.
+ * Run with: boxlang Demo.bx
+ */
+class {
 
+	// ── ANSI codes ────────────────────────────────────────────────────────────
+	variables.E       = chr( 27 )
+	variables.RESET   = chr( 27 ) & "[0m"
+	variables.BOLD    = chr( 27 ) & "[1m"
+	variables.DIM     = chr( 27 ) & "[2m"
+	variables.CYAN    = chr( 27 ) & "[36m"
+	variables.BCYAN   = chr( 27 ) & "[96m"
+	variables.YELLOW  = chr( 27 ) & "[33m"
+	variables.BYELLOW = chr( 27 ) & "[93m"
+	variables.GREEN   = chr( 27 ) & "[32m"
+	variables.BGREEN  = chr( 27 ) & "[92m"
+	variables.BLUE    = chr( 27 ) & "[34m"
+	variables.BBLUE   = chr( 27 ) & "[94m"
+	variables.MAGENTA = chr( 27 ) & "[35m"
+	variables.BWHITE  = chr( 27 ) & "[97m"
+	variables.RED     = chr( 27 ) & "[31m"
+	variables.BRED    = chr( 27 ) & "[91m"
+	variables.BG_BLUE = chr( 27 ) & "[44m"
+	variables.CLEAR   = chr( 27 ) & "[2J" & chr( 27 ) & "[H"
+
+	// ── Entry Point ───────────────────────────────────────────────────────────
 	function main(){
-		var args = CLIGetArgs()
-		var positional = args.positional
-		var options = args.options
+		var examples = getExamples()
+		if( examples.isEmpty() ){
+			println( BRED & "  No examples found in the examples/ folder!" & RESET )
+			return
+		}
+
+		var running = true
+		while( running ){
+			print( CLEAR )
+			showBanner()
+			var selected = selectExample( examples )
+			if( isNull( selected ) ){
+				running = false
+			} else {
+				runExample( selected )
+			}
+		}
+
+		print( CLEAR )
+		println( "" )
+		println( BOLD & BCYAN & "  Thanks for exploring BoxLang AI!  Goodbye! 👋" & RESET )
+		println( "" )
+	}
+
+	// ── Welcome Banner ────────────────────────────────────────────────────────
+	private function showBanner(){
+		var sep = CYAN & "  " & repeatString( "═", 56 ) & RESET
+		println( sep )
+		println( "" )
+		println( BOLD & BCYAN & "    ██████╗ ██╗  ██╗       █████╗ ██╗" & RESET )
+		println( BOLD & BCYAN & "    ██╔══██╗╚██╗██╔╝      ██╔══██╗██║" & RESET )
+		println( BOLD & BCYAN & "    ██████╔╝ ╚███╔╝ █████╗███████║██║" & RESET )
+		println( BOLD & BCYAN & "    ██╔══██╗ ██╔██╗ ╚════╝██╔══██║██║" & RESET )
+		println( BOLD & BCYAN & "    ██████╔╝██╔╝ ██╗      ██║  ██║██║" & RESET )
+		println( BOLD & BCYAN & "    ╚═════╝ ╚═╝  ╚═╝      ╚═╝  ╚═╝╚═╝" & RESET )
+		println( "" )
+		println( "    " & BOLD & BYELLOW & "BoxLang AI Module" & RESET & DIM & " — Interactive Demo Runner" & RESET )
+		println( "    " & DIM & "⚡ Powered by bx-ai | Ortus Solutions" & RESET )
+		println( "" )
+		println( sep )
+		println( "" )
+		println( "  " & DIM & " ↑ ↓  Navigate    Enter  Run    q  Quit" & RESET )
+		println( "" )
+	}
+
+	// ── Discover Examples ─────────────────────────────────────────────────────
+	private function getExamples(){
+		var dir   = expandPath( "./examples" )
+		var files = directoryList( dir, false, "array", "*.bxs" )
+		files.addAll( directoryList( dir, false, "array", "*.bx" ) )
+		files.sort( "text" )
+
+		return files.map( function( f ){
+			var fileName = listLast( f, "/\" )
+			// Strip leading digits+dash and extension to build a human label
+			var name = fileName
+				.reReplace( "^\d+-?", "" )
+				.reReplace( "[-_]", " ", "all" )
+				.reReplace( "\.(bxs|bx)$", "" )
+				.trim()
+			// Title-case
+			name = name
+				.listToArray( " " )
+				.map( w => w.len() ? w.left( 1 ).uCase() & w.right( w.len() - 1 ) : "" )
+				.toList( " " )
+			var num = fileName.reReplace( "^(\d+).*", "\1" )
+			return {
+				"label"    : num & " — " & name,
+				"fileName" : fileName,
+				"path"     : f
+			}
+		} )
+	}
+
+	// ── Interactive Arrow-Key Selection ───────────────────────────────────────
+	private function selectExample( required array examples ){
+		var selected = 1
+		var running  = true
+		var tty      = ""
+
+		setRawMode( true )
+
+		try {
+			tty = createObject( "java", "java.io.FileInputStream" ).init( "/dev/tty" )
+			// Save cursor position, then draw initial menu
+			print( E & "[s" )
+			drawMenu( examples, selected )
+
+			while( running ){
+				var key = readKey( tty )
+
+				switch( key ){
+					case "UP":
+						if( selected > 1 ) selected--
+						print( E & "[u" )
+						drawMenu( examples, selected )
+						break
+					case "DOWN":
+						if( selected < examples.len() ) selected++
+						print( E & "[u" )
+						drawMenu( examples, selected )
+						break
+					case "ENTER":
+						running = false
+						break
+					case "Q":
+						tty.close()
+						setRawMode( false )
+						return null
+				}
+			}
+		} finally {
+			if( !isSimpleValue( tty ) ) tty.close()
+			setRawMode( false )
+		}
+
+		return examples[ selected ]
+	}
+
+	// ── Render Menu Lines ─────────────────────────────────────────────────────
+	private function drawMenu( required array examples, required numeric selected ){
+		var output = ""
+		for( var i = 1; i <= examples.len(); i++ ){
+			output &= E & "[2K"   // clear entire line
+			if( i == selected ){
+				output &= "  " & BG_BLUE & BOLD & BWHITE & "  ▶  " & examples[ i ].label & "  " & RESET & chr( 10 )
+			} else {
+				output &= "  " & DIM & "     " & examples[ i ].label & RESET & chr( 10 )
+			}
+		}
+		print( output )
+	}
+
+	// ── Read a Single Keypress from /dev/tty ──────────────────────────────────
+	private function readKey( required tty ){
+		var b1 = tty.read()
+
+		if( b1 == 27 ){
+			var b2 = tty.read()
+			if( b2 == 91 ){   // CSI '['
+				var b3 = tty.read()
+				if( b3 == 65 ) return "UP"
+				if( b3 == 66 ) return "DOWN"
+				if( b3 == 67 ) return "RIGHT"
+				if( b3 == 68 ) return "LEFT"
+			}
+			return "ESC"
+		}
+		// Enter
+		if( b1 == 13 || b1 == 10 ) return "ENTER"
+		// q / Q / Ctrl-C
+		if( b1 == 113 || b1 == 81 || b1 == 3 ) return "Q"
+		return chr( b1 )
+	}
+
+	// ── Toggle Raw Terminal Mode ──────────────────────────────────────────────
+	private function setRawMode( required boolean raw ){
+		var cmd = raw
+			? "stty raw -echo < /dev/tty"
+			: "stty -raw echo < /dev/tty"
+		createObject( "java", "java.lang.Runtime" )
+			.getRuntime()
+			.exec( javaCast( "String[]", [ "sh", "-c", cmd ] ) )
+			.waitFor()
+	}
+
+	// ── Run Selected Example ──────────────────────────────────────────────────
+	private function runExample( required struct example ){
+		print( CLEAR )
+
+		var titlePad = max( 0, 44 - example.label.len() )
+		var filePad  = max( 0, 48 - example.fileName.len() )
+
+		println( BOLD & CYAN & "  ┌" & repeatString( "─", 52 ) & "┐" & RESET )
+		println( BOLD & CYAN & "  │  " & RESET & BOLD & BYELLOW & "Running: " & example.label & repeatString( " ", titlePad ) & RESET & BOLD & CYAN & "  │" & RESET )
+		println( BOLD & CYAN & "  │  " & RESET & DIM & example.fileName & repeatString( " ", filePad ) & RESET & BOLD & CYAN & "│" & RESET )
+		println( BOLD & CYAN & "  └" & repeatString( "─", 52 ) & "┘" & RESET )
+		println( "" )
+
+		// Run boxlang via shell so it inherits the login PATH
+		var jList = createObject( "java", "java.util.ArrayList" ).init()
+		jList.add( "sh" )
+		jList.add( "-c" )
+		jList.add( "boxlang " & example.path )
+
+		var pb = createObject( "java", "java.lang.ProcessBuilder" ).init( jList )
+		pb.inheritIO()
+		pb.start().waitFor()
+
+		println( "" )
+		println( "  " & DIM & repeatString( "─", 52 ) & RESET )
+		println( "  " & BOLD & BGREEN & "✓ Done!  Press Enter to return to the menu..." & RESET )
+
+		// Block until Enter (reads from /dev/tty so stdin passthrough doesn't interfere)
+		var tty = createObject( "java", "java.io.FileInputStream" ).init( "/dev/tty" )
+		try {
+			while( true ){
+				var b = tty.read()
+				if( b == 13 || b == 10 || b == 113 || b == 81 || b == 3 ) break
+			}
+		} finally {
+			tty.close()
+		}
 	}
 
 }
