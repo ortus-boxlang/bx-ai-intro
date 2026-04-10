@@ -25,8 +25,6 @@ discoveredTools = mcpClient.listTools().getData().tools
 println( "✓ Connected to MCP server" )
 println( "✓ Discovered tools: #discoveredTools.len()#" )
 discoveredTools.each( tool => println( "  - #tool.name#" ) )
-println( "----------------------------------------------------------------------" )
-println()
 
 // Seed agent at construction time.
 boxlangDocsAgent = aiAgent(
@@ -37,7 +35,7 @@ boxlangDocsAgent = aiAgent(
 	Ground answers in documentation and include a short source URL when possible.",
 	model       : aiModel(),
 	mcpServers  : [ mcpUrl ],
-	middleware   : [ new bxmodules.bxai.models.middleware.core.LoggingMiddleware() ]
+	//middleware   : [ new bxmodules.bxai.models.middleware.core.LoggingMiddleware() ]
 )
 
 println( "✓ Agent created and seeded with MCP server" )
@@ -50,8 +48,19 @@ println( "" )
 println( "🤖 Agent response:" )
 println( "----------------------------------------------------------------------" )
 
-response = boxlangDocsAgent.run( query )
-println( response )
+response = ""
+boxlangDocsAgent.stream(
+	( chunk ) => {
+		content = chunk.choices?.first()?.delta?.content ?: ""
+		response &= content
+		print( content )
+	},
+	query,
+	{},
+	{}
+)
+
+println( "" )
 println( "" )
 
 println( "TIP: Ask follow-up docs questions to reuse the same seeded MCP tools." )
