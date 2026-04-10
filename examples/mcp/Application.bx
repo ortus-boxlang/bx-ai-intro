@@ -2,7 +2,6 @@ class{
 
 	this.name = "MCP Application";
 
-
 	function onRequestStart( string targetPage ) {
 
 		if( url.keyExists( "reload" ) ){
@@ -29,6 +28,13 @@ class{
 				"getModuleList",
 				"Give me all the loaded BoxLang modules.",
 				() => getModuleList().keyList()
+			)
+		)
+		.registerTool(
+			aiTool(
+				"getFunctionList",
+				"Give me all the loaded BoxLang functions.",
+				() => getFunctionList().keyList()
 			)
 		)
 		.registerTool(
