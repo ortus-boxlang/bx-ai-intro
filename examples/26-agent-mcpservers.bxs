@@ -1,0 +1,57 @@
+/**
+ * Example 26: Agent MCP Server Seeding
+ *
+ * Seed an agent with a remote MCP server so MCP tools are auto-discovered
+ * and available during agent runs.
+ *
+ * This example uses the BoxLang documentation MCP endpoint:
+ * https://boxlang.ortusbooks.com/~gitbook/mcp
+ */
+
+println( "========================================" )
+println( "Example 26: Agent MCP Server Seeding" )
+println( "========================================" )
+println( "" )
+
+mcpUrl = "https://boxlang.ortusbooks.com/~gitbook/mcp"
+
+println( "📚 MCP Server URL:" )
+println( "  #mcpUrl#" )
+println( "" )
+
+// Optional: inspect tools exposed by the MCP server directly.
+mcpClient = MCP( mcpUrl ).withTimeout( 2000 )
+discoveredTools = mcpClient.listTools().getData().tools
+println( "✓ Connected to MCP server" )
+println( "✓ Discovered tools: #discoveredTools.len()#" )
+discoveredTools.each( tool => println( "  - #tool.name#" ) )
+println( "----------------------------------------------------------------------" )
+println()
+
+// Seed agent at construction time.
+boxlangDocsAgent = aiAgent(
+	name        : "BoxLang Docs Agent",
+	description : "Answers questions using BoxLang docs via MCP tools.",
+	instructions: "You are a BoxLang documentation assistant.
+	Always use MCP tools when the user asks about BoxLang features, APIs, or syntax.
+	Ground answers in documentation and include a short source URL when possible.",
+	model       : aiModel(),
+	mcpServers  : [ mcpUrl ],
+	middleware   : [ new bxmodules.bxai.models.middleware.core.LoggingMiddleware() ]
+)
+
+println( "✓ Agent created and seeded with MCP server" )
+query = "Use your MCP documentation tools to explain BoxLang null-safe navigation and Elvis operator. Include a short code sample and the doc URL you used."
+println( "👤 User query:" )
+println( "----------------------------------------------------------------------" )
+println( query )
+println( "" )
+
+println( "🤖 Agent response:" )
+println( "----------------------------------------------------------------------" )
+
+response = boxlangDocsAgent.run( query )
+println( response )
+println( "" )
+
+println( "TIP: Ask follow-up docs questions to reuse the same seeded MCP tools." )
