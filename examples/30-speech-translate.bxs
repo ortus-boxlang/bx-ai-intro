@@ -1,0 +1,101 @@
+/**
+* Example 30: Audio Translation with aiTranslate()
+*
+* aiTranslate() translates spoken audio from any supported language into English text.
+* Think of it as "international speech recognition" — audio in, English text out.
+*
+* This is audio-to-text translation, not text-to-text translation.
+* Use aiChat() for text-to-text translation between arbitrary languages.
+*
+* The Spanish sample file (sample-es.mp3) is used to demonstrate translation.
+*
+* What you'll learn:
+* - How to translate non-English audio to English text with aiTranslate()
+* - The difference between aiTranscribe() and aiTranslate()
+* - How to combine aiTranslate() + aiChat() for richer workflows
+* - How to compare a transcription vs. a translation of the same audio
+*/
+println( "========================================" )
+println( "Example 30: Audio Translation (aiTranslate)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Translate Spanish audio to English
+// ============================================================================
+println( "--- Example 1: Spanish audio → English text ---" )
+println( "" )
+
+spanishFile = expandPath( "./assets/sample-es.mp3" )
+
+englishText = aiTranslate( spanishFile )
+
+println( "English translation:" )
+println( englishText )
+println( "" )
+
+// ============================================================================
+// Example 2: Explicit provider and model
+// ============================================================================
+println( "--- Example 2: Explicit provider and model ---" )
+println( "" )
+
+translation = aiTranslate(
+    audio  : spanishFile,
+    params : { model: "whisper-1" },
+    options: { provider: "openai" }
+)
+
+println( "OpenAI Whisper translation:" )
+println( translation )
+println( "" )
+
+// ============================================================================
+// Example 3: Compare — transcribe (original language) vs translate (to English)
+// ============================================================================
+println( "--- Example 3: Transcribe vs Translate comparison ---" )
+println( "" )
+
+// aiTranscribe returns the original language text
+originalLang = aiTranscribe(
+    audio  : spanishFile,
+    params : { language: "es" }
+)
+
+// aiTranslate always returns English text
+translatedEn = aiTranslate( spanishFile )
+
+println( "aiTranscribe (original Spanish) : #originalLang#" )
+println( "aiTranslate  (English)          : #translatedEn#" )
+println( "" )
+
+// ============================================================================
+// Example 4: Translate then summarize with aiChat()
+// ============================================================================
+println( "--- Example 4: Translate + summarize with aiChat() ---" )
+println( "" )
+
+// Step 1 — get English text from the audio
+englishFromAudio = aiTranslate( spanishFile )
+
+// Step 2 — feed it to aiChat() for further processing
+summary = aiChat(
+    "Summarize the following in one sentence and identify the main topic: #englishFromAudio#"
+)
+
+println( "Translated audio  : #englishFromAudio#" )
+println( "AI summary        : #summary#" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiTranslate( audio, params, options ) converts any spoken language to English" )
+println( "2. audio can be a file path, a URL, or raw binary data" )
+println( "3. aiTranscribe() preserves the original language; aiTranslate() outputs English" )
+println( "4. options.provider / params.model let you pick a specific Whisper endpoint" )
+println( "5. Chain aiTranslate() with aiChat() for richer multilingual workflows" )
+println( "" )

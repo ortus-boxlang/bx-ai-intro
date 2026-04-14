@@ -1,0 +1,101 @@
+/**
+* Example 29: Speech-to-Text with aiTranscribe()
+*
+* aiTranscribe() converts audio into text using an AI provider (such as OpenAI Whisper
+* or Groq Whisper). It accepts a local file path, a remote URL, or raw binary data.
+*
+* The two attached sample files are used in this example:
+*   - sample.mp3    — English audio
+*   - sample-es.mp3 — Spanish audio
+*
+* What you'll learn:
+* - How to transcribe a local audio file with aiTranscribe()
+* - How to provide a language hint to improve accuracy
+* - How to request rich structured output (timestamps)
+* - How to chain TTS → STT in one round-trip
+*/
+println( "========================================" )
+println( "Example 29: Speech-to-Text (aiTranscribe)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Transcribe a local file — plain text result
+// ============================================================================
+println( "--- Example 1: Transcribe local file (plain text) ---" )
+println( "" )
+
+audioFile = expandPath( "./assets/sample.mp3" )
+
+text = aiTranscribe( audioFile )
+
+println( "Transcription:" )
+println( text )
+println( "" )
+
+// ============================================================================
+// Example 2: Provide a language hint for better accuracy
+// ============================================================================
+println( "--- Example 2: Language hint (Spanish audio) ---" )
+println( "" )
+
+spanishFile = expandPath( "./assets/sample-es.mp3" )
+
+// Providing 'language' in params helps the model skip language-detection overhead
+// and can improve both speed and accuracy.
+spanishText = aiTranscribe(
+    audio  : spanishFile,
+    params : { language: "es" }
+)
+
+println( "Spanish transcription:" )
+println( spanishText )
+println( "" )
+
+// ============================================================================
+// Example 3: Use Groq's Whisper for faster transcription
+// ============================================================================
+println( "--- Example 3: Use Groq Whisper (faster) ---" )
+println( "" )
+
+groqText = aiTranscribe(
+    audio  : audioFile,
+    params : { model: "whisper-large-v3" },
+    options: { provider: "groq" }
+)
+
+println( "Groq Whisper transcription:" )
+println( groqText )
+println( "" )
+
+// ============================================================================
+// Example 4: Generate audio on-the-fly then transcribe it (TTS → STT round-trip)
+// ============================================================================
+println( "--- Example 4: TTS → STT round-trip ---" )
+println( "" )
+
+original = "BoxLang is a modern, dynamic JVM language designed for rapid development."
+
+// Step 1 — synthesize speech
+speechResponse = aiSpeak( original )
+
+// Step 2 — transcribe the binary audio directly (no file needed)
+roundTrip = aiTranscribe( speechResponse.getAudioData() )
+
+println( "Original : #original#" )
+println( "Round-trip: #roundTrip#" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiTranscribe( audio, params, options ) converts speech to text" )
+println( "2. audio can be a file path, a URL, or raw binary data" )
+println( "3. params.language hints the model and improves speed/accuracy" )
+println( "4. Switch providers with options.provider (e.g. 'groq' for Whisper)" )
+println( "5. options.returnFormat defaults to 'text'; use 'response' for rich objects" )
+println( "6. You can pipe aiSpeak() binary output directly into aiTranscribe()" )
+println( "" )

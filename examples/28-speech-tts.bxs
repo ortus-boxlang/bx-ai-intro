@@ -1,0 +1,87 @@
+/**
+* Example 28: Text-to-Speech with aiSpeak()
+*
+* aiSpeak() converts text into synthesized audio using an AI provider.
+* You can capture the audio binary, save it to a file, choose different
+* voices, models, and output formats.
+*
+* What you'll learn:
+* - How to use aiSpeak() to generate speech from text
+* - How to save audio to a file using options.outputFile
+* - How to choose a voice and an HD model
+* - How to work with the AiSpeechResponse object
+*/
+println( "========================================" )
+println( "Example 28: Text-to-Speech (aiSpeak)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Simple TTS — save directly to a file
+// ============================================================================
+println( "--- Example 1: Simple TTS (save to file) ---" )
+println( "" )
+
+outputFile = expandPath( "./data/hello.mp3" )
+
+aiSpeak(
+    text   : "Hello! Welcome to BoxLang AI. This is a simple text-to-speech example.",
+    options: { outputFile: outputFile }
+)
+
+println( "Audio saved to: #outputFile#" )
+println( "" )
+
+// ============================================================================
+// Example 2: Choose a voice and model
+// ============================================================================
+println( "--- Example 2: Custom voice and HD model ---" )
+println( "" )
+
+outputHD = expandPath( "./data/nova-hd.mp3" )
+
+aiSpeak(
+    text   : "BoxLang makes AI integration simple, elegant, and fun for every developer.",
+    params : { model: "tts-1-hd", voice: "nova" },
+    options: { outputFile: outputHD, provider: "openai" }
+)
+
+println( "HD audio (nova voice) saved to: #outputHD#" )
+println( "" )
+
+// ============================================================================
+// Example 3: Work with the AiSpeechResponse object
+// ============================================================================
+println( "--- Example 3: Using the AiSpeechResponse object ---" )
+println( "" )
+
+response = aiSpeak(
+    text   : "The quick brown fox jumps over the lazy dog.",
+    params : { voice: "alloy" },
+    options: { provider: "openai" }
+)
+
+// The response object holds the raw audio binary data
+println( "Response type : #response.getClass().getSimpleName()#" )
+println( "Audio size    : #response.getAudioData().length# bytes" )
+println( "Content type  : #response.getContentType()#" )
+
+// Save via the response object
+responseSavePath = expandPath( "./data/alloy.mp3" )
+response.saveToFile( responseSavePath )
+println( "Audio saved to: #responseSavePath#" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiSpeak( text, params, options ) converts text to speech" )
+println( "2. options.outputFile saves audio directly to a path" )
+println( "3. params.voice controls the voice (alloy, echo, fable, onyx, nova, shimmer)" )
+println( "4. params.model can be 'tts-1' (fast) or 'tts-1-hd' (higher quality)" )
+println( "5. Without outputFile, aiSpeak() returns an AiSpeechResponse object" )
+println( "6. Call response.saveToFile( path ) to persist the binary audio data" )
+println( "" )
