@@ -3,13 +3,14 @@
 *
 * aiSpeak() converts text into synthesized audio using an AI provider.
 * You can capture the audio binary, save it to a file, choose different
-* voices, models, and output formats.
+* voices, models, output formats, and even control the voice style via instructions.
 *
 * What you'll learn:
 * - How to use aiSpeak() to generate speech from text
 * - How to save audio to a file using options.outputFile
 * - How to choose a voice and an HD model
 * - How to work with the AiSpeechResponse object
+* - How to pass style instructions (e.g. "Speak like a pirate")
 */
 println( "========================================" )
 println( "Example 28: Text-to-Speech (aiSpeak)" )
@@ -73,6 +74,41 @@ println( "Audio saved to: #responseSavePath#" )
 println( "" )
 
 // ============================================================================
+// Example 4: Voice style instructions — "sound like a pirate"
+// ============================================================================
+println( "--- Example 4: Voice style instructions ---" )
+println( "" )
+
+// The instructions param controls tone, accent, and personality of the voice.
+// IMPORTANT: Only supported by models that accept this field (e.g. gpt-4o-mini-tts).
+pirateFile = expandPath( "./data/pirate.mp3" )
+
+aiSpeak(
+    text    : "Ahoy! Welcome to BoxLang AI, the finest treasure on the seven seas!",
+    params  : { model: "gpt-4o-mini-tts", voice: "ash" },
+    options : { outputFile: pirateFile, instructions: "Speak like a dramatic pirate. Use 'Arrr!' and seafaring vocabulary." }
+)
+
+println( "Pirate audio saved to: #pirateFile#" )
+println( "" )
+
+// Instructions can also be passed via params — they are equivalent:
+calmFile = expandPath( "./data/calm-narrator.mp3" )
+
+aiSpeak(
+    text  : "BoxLang makes AI feel natural and effortless.",
+    params: {
+        model       : "gpt-4o-mini-tts",
+        voice       : "nova",
+        instructions: "Speak in a calm, slow, soothing narrator voice."
+    },
+    options: { outputFile: calmFile }
+)
+
+println( "Calm narrator audio saved to: #calmFile#" )
+println( "" )
+
+// ============================================================================
 // Key Takeaways
 // ============================================================================
 println( "========================================" )
@@ -80,8 +116,10 @@ println( "KEY TAKEAWAYS:" )
 println( "========================================" )
 println( "1. aiSpeak( text, params, options ) converts text to speech" )
 println( "2. options.outputFile saves audio directly to a path" )
-println( "3. params.voice controls the voice (alloy, echo, fable, onyx, nova, shimmer)" )
-println( "4. params.model can be 'tts-1' (fast) or 'tts-1-hd' (higher quality)" )
+println( "3. params.voice controls the voice (alloy, echo, fable, onyx, nova, shimmer, ash)" )
+println( "4. params.model can be 'tts-1' (fast), 'tts-1-hd' (quality), or 'gpt-4o-mini-tts' (expressive)" )
 println( "5. Without outputFile, aiSpeak() returns an AiSpeechResponse object" )
 println( "6. Call response.saveToFile( path ) to persist the binary audio data" )
+println( "7. options.instructions (or params.instructions) controls voice style/tone" )
+println( "8. Instructions require a compatible model such as gpt-4o-mini-tts" )
 println( "" )
