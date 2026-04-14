@@ -109,7 +109,19 @@ Each example demonstrates specific features. Run them in order to build understa
 | 20 | [Agent Memories](examples/20-agent-memories.bxs) | Persistent memory and context recall |
 | 21 | [Agent Tools](examples/21-agent-tools.bxs) | Tool-enabled agents and function execution |
 | 22 | [Agent Subagents](examples/22-agent-subagents.bxs) | Delegation and multi-agent collaboration |
-| 23 | [Agent Scheduler](examples/23-agent-scheduler.bx) | Scheduled and recurring agent tasks |
+| 23 | [Agent Skills](examples/23-agent-skills.bxs) | Reusable domain knowledge injection |
+| 24 | [Agent Middleware](examples/24-agent-middleware.bxs) | Logging, auditing, and guardrail hooks |
+| 25 | [Agent Middleware (Human-in-the-Loop)](examples/25-agent-middleware-human.bxs) | Human approval middleware |
+| 26 | [Agent MCP Servers](examples/26-agent-mcpservers.bxs) | Auto-discover tools from MCP servers |
+| 27 | [Agent Scheduler](examples/27-agent-scheduler.bx) | Scheduled and recurring agent tasks |
+
+### Speech & Audio Examples
+
+| # | Example | Topics |
+|---|---------|--------|
+| 28 | [Text-to-Speech](examples/28-speech-tts.bxs) | Synthesize speech with `aiSpeak()`, voices, HD models |
+| 29 | [Speech-to-Text](examples/29-speech-transcribe.bxs) | Transcribe audio with `aiTranscribe()`, language hints, TTS→STT round-trip |
+| 30 | [Audio Translation](examples/30-speech-translate.bxs) | Translate spoken audio to English with `aiTranslate()` |
 
 
 ---
