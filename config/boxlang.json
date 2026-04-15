@@ -43,7 +43,34 @@
                 "logResponseToConsole" : false,
                 // The default return format of the AI response: single, all, raw
                 "returnFormat" : "single"
-            }
+            },
+			// --------------------------------------------------------------------------
+			// Skills Directory — Global Skill Auto-Discovery
+			// --------------------------------------------------------------------------
+			// Path to the directory scanned for SKILL.md files at module startup.
+			// Defaults to "/{webroot}/.ai/skills" — a vendor-neutral convention that works with
+			// any AI toolchain.  Can be absolute or relative (relative paths are
+			// expanded from the CWD).  Set to "" to disable auto-discovery entirely.
+			"skillsDirectory" : "/.ai/skills",
+
+			// When true, skills found in skillsDirectory are automatically loaded and injected
+			// into every agent created with aiAgent() as global / shared skills.
+			"autoLoadSkills" : true,
+
+			// Internal — populated by onLoad() with the globally discovered skills.
+			// Access via aiGlobalSkills() with no arguments, or read directly from settings.
+			"globalSkills" : [],
+
+			// --------------------------------------------------------------------------
+			// Audio Settings — Defaults for aiSpeak() / aiTranscribe() / aiTranslate()
+			// --------------------------------------------------------------------------
+			"audio" : {
+				"defaultVoice"              : "openai",
+				"defaultOutputFormat"       : "mp3",
+				// Uses the defaults from the provider config (e.g. model: gpt-4o-mini-tts) if not overridden here
+				"defaultSpeechModel"        : "",
+				"defaultTranscriptionModel" : ""
+			}
         }
     }
 }

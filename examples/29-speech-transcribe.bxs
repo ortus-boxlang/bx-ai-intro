@@ -27,7 +27,7 @@ println( "" )
 
 audioFile = expandPath( "./assets/sample.mp3" )
 
-text = aiTranscribe( audioFile )
+text = aiTranscribe( audio:audioFile, options:{ logRequestToConsole: true } )
 
 println( "Transcription:" )
 println( text )
@@ -80,7 +80,7 @@ original = "BoxLang is a modern, dynamic JVM language designed for rapid develop
 speechResponse = aiSpeak( original )
 
 // Step 2 — transcribe the binary audio directly (no file needed)
-roundTrip = aiTranscribe( speechResponse.getAudioData() )
+roundTrip = aiTranscribe( audio:speechResponse.getAudioData(), params: { inputFormat: "mp3" } )
 
 println( "Original : #original#" )
 println( "Round-trip: #roundTrip#" )

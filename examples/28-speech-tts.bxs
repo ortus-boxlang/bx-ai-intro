@@ -33,6 +33,8 @@ aiSpeak(
 println( "Audio saved to: #outputFile#" )
 println( "" )
 
+cliRead( "Press Enter to continue to the next example..." )
+
 // ============================================================================
 // Example 2: Choose a voice and model
 // ============================================================================
@@ -50,6 +52,8 @@ aiSpeak(
 println( "HD audio (nova voice) saved to: #outputHD#" )
 println( "" )
 
+cliRead( "Press Enter to continue to the next example..." )
+
 // ============================================================================
 // Example 3: Work with the AiSpeechResponse object
 // ============================================================================
@@ -63,15 +67,17 @@ response = aiSpeak(
 )
 
 // The response object holds the raw audio binary data
-println( "Response type : #response.getClass().getSimpleName()#" )
+println( "Response type : #response.$bx.meta.name#" )
 println( "Audio size    : #response.getAudioData().length# bytes" )
-println( "Content type  : #response.getContentType()#" )
+println( "Content type  : #response.getMimeType()#" )
 
 // Save via the response object
 responseSavePath = expandPath( "./data/alloy.mp3" )
 response.saveToFile( responseSavePath )
 println( "Audio saved to: #responseSavePath#" )
 println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
 
 // ============================================================================
 // Example 4: Voice style instructions — "sound like a pirate"
