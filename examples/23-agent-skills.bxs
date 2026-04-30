@@ -51,7 +51,7 @@ println( "" )
 println( "--- Step 2: File-Based Skill ---" )
 println( "" )
 
-boxlangSkill = aiSkill( "/.ai/skills/boxlang-expert/SKILL.md" )
+boxlangSkill = aiSkill( "/.agents/skills/boxlang-expert/SKILL.md" )
 
 println( "✓ File skill loaded: #boxlangSkill.getName()#" )
 println( "  Description: #boxlangSkill.getDescription()#" )
@@ -98,7 +98,7 @@ reviewAgent = aiAgent(
         Check code for correctness, style, and security issues.
         Use your available skills to guide your analysis.",
     model          : aiModel(),
-    availableSkills: aiSkill( "/.ai/skills" )   // scans entire directory
+    availableSkills: aiSkill( "/.agents/skills" )   // scans entire directory
 )
 
 println( "✓ Agent created with lazy-loaded skills from .ai/skills/" )
@@ -135,10 +135,10 @@ platformAssistant = aiAgent(
         For code reviews, load the code-review skill.
         For security questions, load the security skill.",
     model          : aiModel(),
-    skills         : [ aiSkill( "/.ai/skills/boxlang-expert/SKILL.md" ) ],  // always-on
+    skills         : [ aiSkill( "/.agents/skills/boxlang-expert/SKILL.md" ) ],  // always-on
     availableSkills: [
-        aiSkill( "/.ai/skills/code-review/SKILL.md" ),   // lazy
-        aiSkill( "/.ai/skills/security/SKILL.md" )        // lazy
+        aiSkill( "/.agents/skills/code-review/SKILL.md" ),   // lazy
+        aiSkill( "/.agents/skills/security/SKILL.md" )        // lazy
     ]
 )
 
