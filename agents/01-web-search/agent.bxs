@@ -1,0 +1,77 @@
+/**
+ * Agent Example 01: Web Search Agent
+ *
+ * The simplest path to live web data: point the agent at a search-native
+ * provider (Perplexity).  Their "sonar" model fetches real-time results
+ * before answering — no custom tools needed.
+ *
+ * What you'll learn:
+ * - Creating an agent backed by a search-enabled model (Perplexity / sonar)
+ * - Streaming search-grounded answers as they arrive
+ * - How the agent remembers earlier questions in the same session
+ *
+ * Prerequisites:
+ *   PERPLEXITY_API_KEY=<your key>  in .env
+ *
+ * Run:
+ *   boxlang agents/01-web-search/agent.bxs
+ */
+
+println( "=============================================" )
+println( "Agent 01: Web Search Agent (Perplexity Sonar)" )
+println( "=============================================" )
+println( "" )
+
+// Perplexity's "sonar" model has built-in real-time web search.
+// Swap to "sonar-pro" for deeper research with more cited sources.
+webSearchAgent = aiAgent(
+    name        : "web-researcher",
+    description : "An agent that answers questions using live web search.",
+    instructions: "You are a web research assistant.
+    - Always cite sources by including URLs when available
+    - Note when information might be outdated
+    - Be concise but thorough — bullet points for lists, prose for explanations",
+    model: aiModel(
+        { model: "sonar" },
+        { provider: "perplexity" }
+    )
+)
+
+println( "Agent   : " & webSearchAgent.getName() )
+println( "Provider: Perplexity sonar (live web search, no extra tools needed)" )
+println( "" )
+
+// A set of questions that benefit from up-to-date web data
+questions = [
+    "What are the most popular open-source AI agent frameworks in 2025?",
+    "What is BoxLang and how does it compare with other JVM languages?",
+    "What LLM models were released this month?"
+]
+
+questions.each( ( question, idx ) => {
+    println( "--- Question " & idx & " of " & questions.len() & " ---" )
+    println( "You  : " & question )
+    print( "Agent: " )
+
+    // Stream so the user sees tokens as they arrive
+    webSearchAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        question
+    )
+
+    println( "" )
+    println( "" )
+
+    if ( idx < questions.len() ) {
+        cliRead( "Press Enter for the next question..." )
+    }
+})
+
+// The agent retained all three exchanges in window memory
+println( "Memory: " & webSearchAgent.getMemoryMessages().len() & " messages retained across all questions" )
+println( "" )
+println( "KEY TAKEAWAYS:" )
+println( "  * Perplexity sonar searches the web internally — zero extra plumbing" )
+println( "  * Citations appear inline when the model references its sources" )
+println( "  * All questions share the same agent memory — follow-ups work naturally" )
+println( "  * Switch model to 'sonar-pro' for deeper multi-source research" )

@@ -1,0 +1,170 @@
+/**
+ * Agent Example 06: Skills-Enhanced Agent
+ *
+ * Skills inject reusable domain knowledge into an agent's system context —
+ * think of them as "pluggable expertise" that you mix and match across agents
+ * without duplicating instructions.
+ *
+ * Two injection modes:
+ *   skills:           Always-on  — full content injected into every request
+ *   availableSkills:  Lazy-load  — only the name/description is shown upfront;
+ *                                  the agent calls loadSkill() on demand
+ *
+ * Domain skills built here (in ./skills/):
+ *   finance-analyst   Ratio analysis, DCF valuation, risk assessment
+ *   data-science      EDA, feature engineering, model selection, production ML
+ *
+ * Global skills auto-loaded from /.agents/skills/:
+ *   boxlang-expert    BoxLang syntax & best practices (always-on)
+ *   code-review       Code review methodology (lazy)
+ *   security          Security review checklist (lazy)
+ *
+ * What you'll learn:
+ * - Creating inline skills vs loading from .md files
+ * - always-on skills (skills: []) vs lazy skills (availableSkills: [])
+ * - Mixing global project skills with agent-local domain skills
+ * - Using aiSkill( directory ) to auto-discover an entire folder
+ *
+ * Run:
+ *   boxlang agents/06-skills/agent.bxs
+ */
+
+println( "==========================================" )
+println( "Agent 06: Skills-Enhanced Agent" )
+println( "==========================================" )
+println( "" )
+
+localSkillsPath = expandPath( "./skills" )
+
+// ---------------------------------------------------------------------------
+// Step 1: Inline skill — created in code, no file needed
+// ---------------------------------------------------------------------------
+println( "--- Step 1: Inline Skill ---" )
+
+communicationSkill = aiSkill(
+    name       : "clear-communicator",
+    description: "Guidelines for clear, structured, audience-appropriate communication.",
+    content    : "
+    Communication Rules:
+    - Open every answer with a one-sentence executive summary
+    - Use Markdown: ## for sections, ### for subsections, **bold** for key terms
+    - Bullet lists for items, numbered lists for steps or rankings
+    - Define technical terms the first time you use them
+    - Close with a 'Next Steps' or 'Bottom Line' section
+    - Adjust vocabulary to match the apparent expertise of the questioner
+    "
+)
+
+println( "Inline skill: " & communicationSkill.getName() )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Step 2: Domain skills loaded from this example's ./skills/ directory
+// ---------------------------------------------------------------------------
+println( "--- Step 2: Local Domain Skills ---" )
+
+financeSkill   = aiSkill( localSkillsPath & "/finance-analyst/SKILL.md" )
+dataSciSkill   = aiSkill( localSkillsPath & "/data-science/SKILL.md" )
+
+println( "Finance skill : " & financeSkill.getName() )
+println( "Data sci skill: " & dataSciSkill.getName() )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Step 3: Agent A — Always-on domain expert
+// communicationSkill is tiny → always on; domain skills inject full content
+// ---------------------------------------------------------------------------
+println( "--- Step 3: Always-On Domain Expert ---" )
+
+analystAgent = aiAgent(
+    name        : "domain-analyst",
+    description : "A financial and data science analyst with always-available domain expertise.",
+    instructions: "You are a senior analyst with dual expertise in finance and data science.
+    Apply your domain knowledge to every question, even if not explicitly asked.",
+    model   : aiModel(),
+    skills  : [ communicationSkill, financeSkill, dataSciSkill ]
+)
+
+println( "Agent created with 3 always-on skills" )
+println( "" )
+
+q1 = "Analyze this company snapshot: Revenue $120M (+18% YoY), Net Margin 12%, Debt/Equity 0.4, P/E 22. Is this a healthy business?"
+println( "You  : " & q1 )
+print( "Agent: " )
+r1 = analystAgent.run( q1 )
+println( r1 )
+println( "" )
+
+cliRead( "Press Enter to see lazy-loaded skills in action..." )
+
+// ---------------------------------------------------------------------------
+// Step 4: Agent B — Lazy-loaded global + local skills
+// Global skills from /.agents/skills/ + local domain skills on demand
+// ---------------------------------------------------------------------------
+println( "--- Step 4: Lazy-Loaded Skills ---" )
+println( "" )
+
+// Load entire local skills directory — agent sees only name+description until needed
+lazyLocalSkills = aiSkill( localSkillsPath )
+
+reviewerAgent = aiAgent(
+    name           : "platform-analyst",
+    description    : "A versatile analyst that lazy-loads expertise on demand.",
+    instructions   : "You are a versatile platform analyst.
+    Load the relevant skill when the question requires domain expertise.
+    Always start your response with a one-sentence executive summary.",
+    model          : aiModel(),
+    skills         : [ communicationSkill ],              // always-on: communication style
+    availableSkills: [
+        lazyLocalSkills,                                  // lazy: finance-analyst, data-science
+        aiSkill( "/.agents/skills/code-review/SKILL.md" ),  // lazy: code review
+        aiSkill( "/.agents/skills/security/SKILL.md" )      // lazy: security
+    ]
+)
+
+println( "Agent created:" )
+println( "  always-on  → clear-communicator" )
+println( "  lazy       → finance-analyst, data-science, code-review, security" )
+println( "" )
+
+q2 = "I have a dataset of 500k customer transactions with 40% missing values in the 'loyalty_score' column. How should I handle this?"
+println( "You  : " & q2 )
+print( "Agent: " )
+r2 = reviewerAgent.run( q2 )
+println( r2 )
+println( "" )
+
+cliRead( "Press Enter for the interactive skill showcase..." )
+
+// ---------------------------------------------------------------------------
+// Step 5: Interactive — let the user trigger different skills
+// ---------------------------------------------------------------------------
+println( "--- Step 5: Interactive Skill Showcase ---" )
+println( "" )
+println( "Try asking questions in any domain:" )
+println( "  Finance : 'Calculate the WACC for a company with 60% equity at 14% cost, 40% debt at 6%, 25% tax'" )
+println( "  Data sci: 'My classification model has 95% accuracy but 20% recall on the minority class. What should I do?'" )
+println( "  Code    : 'Review this code: result = queryExecute(\"SELECT * FROM users WHERE id=\" & url.id)'" )
+println( "  Security: 'What are the top risks in a public-facing API that accepts file uploads?'" )
+println( "" )
+
+while ( true ) {
+    userInput = cliRead( "You (or 'exit'): " ).trim()
+    if ( userInput == "exit" || userInput == "q" ) { break }
+    if ( userInput.isEmpty() ) { continue }
+
+    print( "Agent: " )
+    reviewerAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        userInput
+    )
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * aiSkill() accepts inline content, a file path, or a directory" )
+println( "  * skills: [] injects full content — use for small, always-relevant knowledge" )
+println( "  * availableSkills: [] shows only the index — AI pulls content when needed" )
+println( "  * aiSkill( directory ) auto-discovers all SKILL.md files in a folder" )
+println( "  * Mix global (/.agents/skills/) and local (./skills/) skills freely" )

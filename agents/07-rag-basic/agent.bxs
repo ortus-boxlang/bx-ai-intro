@@ -1,0 +1,217 @@
+/**
+ * Agent Example 07: Basic RAG (Retrieval-Augmented Generation)
+ *
+ * RAG solves a fundamental problem: LLMs have fixed training data and a
+ * limited context window.  RAG lets you build agents that answer questions
+ * from YOUR documents — without fine-tuning or stuffing everything into the prompt.
+ *
+ * This example implements RAG entirely in BoxLang with NO external services:
+ * 1. Load text documents from a ./docs/ directory
+ * 2. Chunk each document into overlapping windows
+ * 3. Index chunks using TF-IDF keyword scoring (pure BoxLang)
+ * 4. At query time: rank chunks by relevance and inject the top-k into context
+ * 5. The agent answers using only the retrieved context
+ *
+ * Knowledge base: ./docs/  (3 files about BoxLang, bx-ai, and agent patterns)
+ *
+ * What you'll learn:
+ * - Document loading and chunking strategies
+ * - Simple keyword-based ranking (no vector DB required)
+ * - Injecting retrieved context into an agent with aiMessage().mergeContext()
+ * - When basic RAG is "good enough" vs when you need a vector DB (see example 08)
+ *
+ * Run:
+ *   boxlang agents/07-rag-basic/agent.bxs
+ */
+
+println( "==========================================" )
+println( "Agent 07: Basic RAG (No Vector DB)" )
+println( "==========================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 1: Load and chunk documents
+// ---------------------------------------------------------------------------
+
+docsPath = expandPath( "./docs" )
+println( "Loading documents from: " & docsPath )
+
+/**
+ * Split text into overlapping chunks of approximately `size` characters.
+ * Overlap ensures that sentences at chunk boundaries appear in multiple chunks.
+ */
+function chunkText( text, size=800, overlap=150 ) {
+    var chunks = []
+    var start  = 1
+    var len    = text.len()
+
+    while ( start <= len ) {
+        var finish = min( start + size - 1, len )
+
+        // Extend to the end of the current sentence if possible
+        if ( finish < len ) {
+            var sentenceEnd = text.find( ". ", finish )
+            if ( sentenceEnd > 0 && sentenceEnd < finish + 200 ) {
+                finish = sentenceEnd + 1
+            }
+        }
+
+        chunks.append( text.mid( start, finish - start + 1 ).trim() )
+        start = finish - overlap + 1
+    }
+
+    return chunks
+}
+
+// Load all .txt files from the docs directory
+knowledgeBase = []
+docFiles = directoryList( docsPath, false, "path", "*.txt" )
+
+docFiles.each( ( filePath ) => {
+    var content  = fileRead( filePath )
+    var fileName = listLast( filePath, "/\" )
+    var chunks   = chunkText( content )
+
+    chunks.each( ( chunk, idx ) => {
+        knowledgeBase.append({
+            id      : fileName & "::" & idx,
+            source  : fileName,
+            content : chunk
+        })
+    })
+
+    println( "  Loaded: " & fileName & " → " & chunks.len() & " chunks" )
+})
+
+println( "Knowledge base: " & knowledgeBase.len() & " total chunks" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 2: TF-IDF style keyword scoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Score a chunk against a query by counting query term occurrences.
+ * Returns a numeric relevance score.
+ */
+function scoreChunk( chunk, query ) {
+    var text  = chunk.content.toLowerCase()
+    var terms = query.toLowerCase()
+        .reReplace( "[^a-z0-9\s]", " ", "ALL" )
+        .reReplace( "\s+", " ", "ALL" )
+        .trim()
+        .listToArray( " " )
+
+    var score = 0
+
+    terms.each( ( term ) => {
+        if ( term.len() > 2 ) {
+            var pos = 1
+            while ( true ) {
+                var found = text.find( term, pos )
+                if ( found == 0 ) break
+                score += ( term.len() > 5 ? 2 : 1 )  // longer matches score higher
+                pos = found + 1
+            }
+        }
+    })
+
+    // Small boost for chunks that start near the top of their source document
+    if ( chunk.id.listLast( "::" ) == "1" ) { score += 1 }
+
+    return score
+}
+
+/**
+ * Retrieve the top-k most relevant chunks for a query.
+ */
+function retrieve( query, topK=3 ) {
+    var scored = knowledgeBase.map( ( chunk ) => {
+        return { chunk: chunk, score: scoreChunk( chunk, query ) }
+    })
+
+    // Sort descending by score, take top-k with score > 0
+    scored.sort( "numeric", "desc", ( a, b ) => b.score - a.score )
+
+    return scored
+        .filter( ( s ) => s.score > 0 )
+        .slice( 1, min( topK, scored.len() ) )
+        .map( ( s ) => s.chunk )
+}
+
+println( "Retrieval engine ready (keyword scoring over " & knowledgeBase.len() & " chunks)" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 3: Create the RAG-powered agent
+// ---------------------------------------------------------------------------
+
+ragAgent = aiAgent(
+    name        : "boxlang-docs-agent",
+    description : "Answers questions about BoxLang and bx-ai using retrieved documentation.",
+    instructions: "You are a BoxLang documentation assistant.
+    Answer ONLY from the context provided in each question.
+    If the context does not contain enough information to answer, say so clearly.
+    Always cite the source file at the end of your answer.
+    Format answers clearly with Markdown."
+)
+
+println( "Agent: " & ragAgent.getName() )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 4: RAG query loop
+// ---------------------------------------------------------------------------
+
+println( "Ask questions about BoxLang, bx-ai, or agent patterns." )
+println( "The agent will retrieve relevant docs before answering." )
+println( "" )
+println( "Example questions:" )
+println( "  - What providers does bx-ai support?" )
+println( "  - How does memory tiering work in bx-ai agents?" )
+println( "  - What is the BoxLang module system?" )
+println( "  - How do I implement the guardrails pattern?" )
+println( "" )
+
+while ( true ) {
+    userQuery = cliRead( "You (or 'exit'): " ).trim()
+    if ( userQuery == "exit" || userQuery == "q" ) { break }
+    if ( userQuery.isEmpty() ) { continue }
+
+    // Retrieve the most relevant chunks for this query
+    retrieved = retrieve( userQuery, 3 )
+
+    if ( retrieved.isEmpty() ) {
+        println( "Agent: I could not find relevant information in my knowledge base for that question." )
+        println( "" )
+        continue
+    }
+
+    // Build context string from retrieved chunks
+    contextText = retrieved.map( ( c, i ) => {
+        return "[Source: " & c.source & "]\n" & c.content
+    }).toList( chr(10) & chr(10) & "---" & chr(10) & chr(10) )
+
+    // Show retrieval stats
+    println( "  Retrieved " & retrieved.len() & " chunks from: " & retrieved.map( (c) => c.source ).toList(", ") )
+
+    // Inject retrieved context and answer
+    message = aiMessage()
+        .system( ragAgent.getConfig().instructions )
+        .user( "Context documents:\n\n" & contextText & "\n\n---\n\nQuestion: " & userQuery )
+
+    print( "Agent: " )
+    aiChatStream(
+        message,
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" )
+    )
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * RAG = retrieve relevant chunks → inject as context → model answers from context" )
+println( "  * Keyword scoring works well for technical docs with distinctive terminology" )
+println( "  * Overlapping chunks (overlap=150) prevent answers from being cut off at boundaries" )
+println( "  * For semantic understanding across large corpora, upgrade to vector RAG (example 08)" )
+println( "  * aiMessage().mergeContext() and manual context injection both work for RAG" )

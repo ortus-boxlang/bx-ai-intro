@@ -1,0 +1,154 @@
+# BoxLang AI Studio — Local AI Infrastructure
+#
+# Services:
+#   ollama      Local LLM server (llama3.2, mistral, gemma2, deepseek-r1, …)
+#   open-webui  Chat UI for Ollama   → http://localhost:8080
+#   chromadb    Vector DB for RAG    → http://localhost:8000
+#   qdrant      Alt vector DB        → http://localhost:6333  (dashboard /dashboard)
+#   redis       Cache / agent memory → localhost:6379
+#
+# Quick start:
+#   docker compose up -d
+#   docker compose exec ollama ollama pull llama3.2
+#   docker compose exec ollama ollama pull nomic-embed-text
+#
+# Add to your .env:
+#   OLLAMA_BASE_URL=http://localhost:11434
+#   CHROMA_BASE_URL=http://localhost:8000
+#   QDRANT_BASE_URL=http://localhost:6333
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Ollama — Local LLM Server
+  # Supports: llama3.2, llama3.1, mistral, gemma3, phi4, deepseek-r1, qwen3 …
+  # API docs: https://github.com/ollama/ollama/blob/main/docs/api.md
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: bxai-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    # Uncomment the block below to enable NVIDIA GPU acceleration:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Open WebUI — Browser-based chat interface for Ollama
+  # Access: http://localhost:8080
+  # ---------------------------------------------------------------------------
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: bxai-open-webui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - open_webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=false
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # ChromaDB — Open-source Embedding / Vector Database
+  # REST API:   http://localhost:8000/api/v1
+  # Docs:       https://docs.trychroma.com
+  # Used for:   RAG, semantic search, document Q&A (examples 08-rag-vector)
+  # ---------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: bxai-chromadb
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Qdrant — High-Performance Vector Search Engine
+  # REST API:   http://localhost:6333
+  # gRPC:       localhost:6334
+  # Dashboard:  http://localhost:6333/dashboard
+  # Used for:   Production RAG, payload filtering, multi-tenancy
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: bxai-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Redis — Cache & Agent Memory Store
+  # Connection: localhost:6379
+  # Used for:   aiMemory( "cache" ), rate limiting, session persistence
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: bxai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  ollama_data:
+    driver: local
+  open_webui_data:
+    driver: local
+  chromadb_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  redis_data:
+    driver: local

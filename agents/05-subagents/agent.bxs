@@ -1,0 +1,182 @@
+/**
+ * Agent Example 05: Multi-Agent Orchestration with Sub-Agents
+ *
+ * Complex tasks are best solved by a team of specialists.
+ * Sub-agents are autonomous agents exposed as callable tools to a parent
+ * agent (the "orchestrator").  The orchestrator delegates work, collects
+ * results, and assembles the final output.
+ *
+ * Team architecture:
+ *   researchAgent   — Gathers facts on a topic (uses web search model)
+ *   writerAgent     — Turns research into polished long-form content
+ *   editorAgent     — Reviews for clarity, grammar, and style
+ *   seoAgent        — Adds SEO metadata: title, meta description, tags
+ *   contentManager  — Orchestrator: delegates to all four, then delivers
+ *
+ * What you'll learn:
+ * - Defining specialised sub-agents with tight, focused instructions
+ * - Connecting sub-agents to an orchestrator via subAgents: []
+ * - How sub-agents become callable tools automatically
+ * - Streaming a coordinated multi-agent pipeline
+ * - How each agent maintains its own independent memory
+ *
+ * Run:
+ *   boxlang agents/05-subagents/agent.bxs
+ */
+
+import bxModules.bxai.models.middleware.core.LoggingMiddleware
+
+println( "==========================================" )
+println( "Agent 05: Multi-Agent Orchestration" )
+println( "==========================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Sub-Agent 1: Research Specialist
+// Uses Perplexity for live web search (falls back to default if no key)
+// ---------------------------------------------------------------------------
+researchAgent = aiAgent(
+    name        : "research-specialist",
+    description : "Researches topics and returns structured facts, statistics, and source URLs.",
+    instructions: "You are a research specialist. When given a topic:
+    1. Gather key facts, statistics, and recent developments
+    2. Structure findings as: Overview, Key Points (bulleted), Recent Trends, Sources
+    3. Be factual and cite sources where possible
+    4. Keep research concise — aim for 300-400 words",
+    model: aiModel(
+        { model: "sonar" },
+        { provider: "perplexity" }
+    )
+)
+
+// ---------------------------------------------------------------------------
+// Sub-Agent 2: Content Writer
+// ---------------------------------------------------------------------------
+writerAgent = aiAgent(
+    name        : "content-writer",
+    description : "Transforms research briefs into engaging, well-structured long-form content.",
+    instructions: "You are an expert content writer. When given a research brief:
+    1. Write a compelling introduction that hooks the reader
+    2. Expand each key point into a full paragraph with examples
+    3. Use clear headings (H2/H3 in Markdown) to structure the article
+    4. Write a strong conclusion with a call to action
+    5. Aim for 500-700 words, conversational but authoritative tone"
+)
+
+// ---------------------------------------------------------------------------
+// Sub-Agent 3: Editor
+// ---------------------------------------------------------------------------
+editorAgent = aiAgent(
+    name        : "content-editor",
+    description : "Reviews and improves written content for clarity, grammar, style, and readability.",
+    instructions: "You are a meticulous content editor. When given an article draft:
+    1. Fix any grammar, spelling, or punctuation errors
+    2. Improve sentence variety and flow
+    3. Ensure consistent tone throughout
+    4. Simplify overly complex sentences
+    5. Return the polished, final version of the article (not a list of edits)"
+)
+
+// ---------------------------------------------------------------------------
+// Sub-Agent 4: SEO Specialist
+// ---------------------------------------------------------------------------
+seoAgent = aiAgent(
+    name        : "seo-specialist",
+    description : "Analyses content and generates SEO metadata to maximise search visibility.",
+    instructions: "You are an SEO specialist. When given an article:
+    1. Write an SEO-optimised title (55-60 characters, includes primary keyword)
+    2. Write a meta description (150-160 characters, action-oriented)
+    3. List 5-8 relevant tags / keywords
+    4. Suggest 2-3 internal link anchor text ideas
+    5. Return results as a clearly labelled JSON object"
+)
+
+// ---------------------------------------------------------------------------
+// Orchestrator: Content Manager
+// Receives all four sub-agents as callable tools automatically
+// ---------------------------------------------------------------------------
+contentManager = aiAgent(
+    name        : "content-manager",
+    description : "An orchestrator that coordinates research, writing, editing, and SEO to produce publish-ready content.",
+    instructions: "You are a content production manager overseeing a team of specialists.
+    When given a topic to create content about:
+
+    Step 1 — Research: Call research-specialist to gather facts and sources
+    Step 2 — Write: Pass the research to content-writer to draft the article
+    Step 3 — Edit: Send the draft to content-editor for polish and corrections
+    Step 4 — SEO: Give the edited article to seo-specialist for metadata
+    Step 5 — Deliver: Present the final article followed by the SEO metadata block
+
+    Always complete ALL four steps before responding.
+    Show the final article and SEO metadata in your answer.",
+    model    : aiModel(),
+    subAgents: [ researchAgent, writerAgent, editorAgent, seoAgent ],
+    middleware: [
+        new LoggingMiddleware( logToConsole: true, prefix: "[Content Manager]" )
+    ]
+)
+
+println( "Team ready:" )
+println( "  research-specialist  → gathers facts via Perplexity" )
+println( "  content-writer       → drafts the article" )
+println( "  content-editor       → polishes the draft" )
+println( "  seo-specialist       → generates SEO metadata" )
+println( "  content-manager      → orchestrates all four" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Demonstration: generate a full article on demand
+// ---------------------------------------------------------------------------
+topics = [
+    "The rise of AI agents in enterprise software development",
+    "BoxLang: the next-generation JVM scripting language"
+]
+
+println( "Available demo topics:" )
+topics.each( ( t, i ) => println( "  " & i & ". " & t ) )
+println( "" )
+
+choice = cliRead( "Pick a topic (1-" & topics.len() & ") or type your own: " ).trim()
+
+selectedTopic = topics[ val( choice ) ] ?: choice
+if ( selectedTopic.isEmpty() ) { selectedTopic = topics[1] }
+
+println( "" )
+println( "Creating content for: " & selectedTopic )
+println( "This will take a moment — the manager is coordinating 4 agents..." )
+println( "" )
+
+print( "Content Manager: " )
+
+stepCount = 0
+contentManager.stream(
+    ( chunk ) => {
+        var content   = chunk.choices?.first()?.delta?.content ?: ""
+        var toolCalls = chunk.choices?.first()?.delta?.tool_calls ?: []
+        if ( toolCalls.len() ) {
+            stepCount++
+            print( chr(10) & "[Step " & stepCount & ": delegating to sub-agent...] " & chr(10) )
+        }
+        print( content )
+    },
+    "Please create a complete, publish-ready article about: " & selectedTopic
+)
+
+println( "" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Show agent topology
+// ---------------------------------------------------------------------------
+println( "=== Agent Topology ===" )
+config = contentManager.getConfig()
+println( "Orchestrator : " & config.name )
+println( "Sub-agents   : " & config.subAgents.len() & " registered as tools" )
+println( "Middleware   : " & contentManager.listMiddleware().len() & " active" )
+println( "" )
+println( "KEY TAKEAWAYS:" )
+println( "  * Sub-agents are defined with aiAgent() and wired via subAgents: []" )
+println( "  * Each sub-agent automatically becomes a callable tool for the orchestrator" )
+println( "  * Each sub-agent has its own memory, model, and instructions" )
+println( "  * The orchestrator decides the order and conditions for delegation" )
+println( "  * LoggingMiddleware on the orchestrator captures the full delegation trace" )

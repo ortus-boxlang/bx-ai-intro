@@ -1,0 +1,269 @@
+/**
+ * Agent Example 09: Local LLM Agent with Ollama
+ *
+ * Run AI agents entirely on your own hardware — no API keys, no internet,
+ * no data leaving your machine.  Ollama makes local LLMs as simple as
+ * pulling a Docker image.
+ *
+ * Why local LLMs?
+ * - Privacy: sensitive data stays on-premise
+ * - Cost: zero per-token API fees (just compute)
+ * - Offline: works without internet access
+ * - Latency: no network round-trip for small models
+ * - Control: pin exact model versions, fine-tune if needed
+ *
+ * What you'll learn:
+ * - Pointing bx-ai agents at the Ollama provider
+ * - Running multiple local models side-by-side
+ * - Using nomic-embed-text for local embeddings
+ * - Comparing local vs cloud model responses and capabilities
+ * - Practical model selection guide for local deployments
+ *
+ * Prerequisites:
+ *   docker compose up -d ollama     (from docker-compose.yml in repo root)
+ *   docker compose exec ollama ollama pull llama3.2
+ *   docker compose exec ollama ollama pull mistral
+ *   docker compose exec ollama ollama pull nomic-embed-text
+ *
+ * Or pull directly if Ollama is installed locally:
+ *   ollama pull llama3.2
+ *
+ * Run:
+ *   boxlang agents/09-local-llm/agent.bxs
+ */
+
+println( "==========================================" )
+println( "Agent 09: Local LLM Agent (Ollama)" )
+println( "==========================================" )
+println( "" )
+
+OLLAMA_URL = systemEnvironment[ "OLLAMA_BASE_URL" ] ?: "http://localhost:11434"
+
+// ---------------------------------------------------------------------------
+// Helper: check which models are available in Ollama
+// ---------------------------------------------------------------------------
+function getAvailableModels() {
+    try {
+        var http = new Http( method="GET", url=OLLAMA_URL & "/api/tags" )
+        var result = http.send().getPrefix()
+        if ( val( result.status_code ) != 200 ) { return [] }
+        var data = deserializeJSON( result.fileContent )
+        return data.models ?: []
+    } catch ( any e ) {
+        return []
+    }
+}
+
+// Verify Ollama is reachable
+println( "Checking Ollama at " & OLLAMA_URL & "..." )
+availableModels = getAvailableModels()
+
+if ( availableModels.isEmpty() ) {
+    println( "ERROR: Cannot reach Ollama at " & OLLAMA_URL )
+    println( "  Make sure Ollama is running: docker compose up -d ollama" )
+    println( "  Then pull a model: docker compose exec ollama ollama pull llama3.2" )
+    abort
+}
+
+println( "Ollama is online. Available models:" )
+availableModels.each( ( m ) => {
+    var sizeGB = round( (m.size ?: 0) / 1073741824, 1 )
+    println( "  * " & m.name & " (" & sizeGB & " GB)" )
+})
+println( "" )
+
+// Pick the best available model for the demo
+preferredModels = [ "llama3.2", "llama3.1", "llama3", "mistral", "gemma2", "phi4", "qwen2.5" ]
+selectedModel   = ""
+
+preferredModels.each( ( preferred ) => {
+    if ( selectedModel.isEmpty() ) {
+        availableModels.each( ( m ) => {
+            if ( selectedModel.isEmpty() && m.name.left( preferred.len() ) == preferred ) {
+                selectedModel = m.name
+            }
+        })
+    }
+})
+
+if ( selectedModel.isEmpty() ) {
+    selectedModel = availableModels.first().name  // use whatever is available
+}
+
+println( "Using model: " & selectedModel )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 1: Simple local agent — identical API to cloud, different provider
+// ---------------------------------------------------------------------------
+println( "--- Step 1: Local Agent (no API key needed) ---" )
+println( "" )
+
+localAgent = aiAgent(
+    name        : "local-assistant",
+    description : "A privacy-first assistant running entirely on local hardware.",
+    instructions: "You are a helpful, concise assistant.
+    You run completely locally — no data is sent to the cloud.
+    Keep responses under 150 words unless asked for more detail.",
+    model: aiModel(
+        { model: selectedModel },
+        { provider: "ollama" }
+    )
+)
+
+q1 = "What are three key advantages of running AI models locally?"
+println( "You  : " & q1 )
+print( "Agent: " )
+
+localAgent.stream(
+    ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+    q1
+)
+println( "" )
+println( "" )
+
+cliRead( "Press Enter to see a coding assistant with local tools..." )
+
+// ---------------------------------------------------------------------------
+// STEP 2: Local coding assistant with tools
+// ---------------------------------------------------------------------------
+println( "--- Step 2: Local Coding Assistant with Tools ---" )
+println( "" )
+
+// Tool: run a BoxLang expression locally
+evalTool = aiTool(
+    "evaluateBoxLang",
+    "Evaluate a BoxLang expression or script snippet and return the result.",
+    ( code ) => {
+        try {
+            var result = evaluate( code )
+            return "Result: " & serializeJSON( result )
+        } catch ( any e ) {
+            return "Error: " & e.message
+        }
+    }
+).describeCode( "The BoxLang expression or one-liner to evaluate, e.g. 'dateFormat(now(), \"yyyy-mm-dd\")'" )
+
+// Tool: list files in a directory
+listFilesTool = aiTool(
+    "listFiles",
+    "List files and directories at a given path.",
+    ( path ) => {
+        try {
+            var expanded = expandPath( path )
+            if ( !directoryExists( expanded ) ) {
+                return "Directory not found: " & path
+            }
+            var items = directoryList( expanded, false, "name" )
+            return "Contents of " & path & ":\n" & items.toList( chr(10) )
+        } catch ( any e ) {
+            return "Error listing directory: " & e.message
+        }
+    }
+).describePath( "Relative or absolute directory path to list" )
+
+localCodingAgent = aiAgent(
+    name        : "local-coder",
+    description : "A local coding assistant that can evaluate BoxLang and inspect the filesystem.",
+    instructions: "You are a local BoxLang coding assistant.
+    Use evaluateBoxLang to test expressions and verify answers.
+    Use listFiles to explore the project structure.
+    Always run code before claiming what it produces.",
+    model: aiModel(
+        { model: selectedModel },
+        { provider: "ollama" }
+    ),
+    tools: [ evalTool, listFilesTool ]
+)
+
+codingQuestions = [
+    "What does dateFormat(now(), 'MMMM d, yyyy') produce today?",
+    "Create an array of the first 5 Fibonacci numbers and return it as JSON",
+    "List the files in the current directory"
+]
+
+codingQuestions.each( ( q, i ) => {
+    println( "You  : " & q )
+    print( "Agent: " )
+
+    localCodingAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        q
+    )
+    println( "" )
+    println( "" )
+})
+
+cliRead( "Press Enter to compare local vs cloud models..." )
+
+// ---------------------------------------------------------------------------
+// STEP 3: Multi-model comparison (local vs cloud)
+// ---------------------------------------------------------------------------
+println( "--- Step 3: Local vs Cloud Model Comparison ---" )
+println( "" )
+
+comparisonPrompt = "Explain the difference between RAG and fine-tuning in 3 bullet points."
+
+println( "Comparing: " & selectedModel & " (local) vs openrouter/auto (cloud)" )
+println( "Prompt: " & comparisonPrompt )
+println( "" )
+
+// Local model
+println( "=== LOCAL: " & selectedModel & " ===" )
+print( "Response: " )
+localResponse = aiChat(
+    comparisonPrompt,
+    { model: selectedModel },
+    { provider: "ollama" }
+)
+println( localResponse )
+println( "" )
+
+// Cloud model
+println( "=== CLOUD: openrouter/auto ===" )
+print( "Response: " )
+cloudResponse = aiChat(
+    comparisonPrompt,
+    { model: "openrouter/auto" },
+    { provider: "openrouter" }
+)
+println( cloudResponse )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 4: Interactive local agent chat
+// ---------------------------------------------------------------------------
+cliRead( "Press Enter for interactive local chat..." )
+
+println( "--- Step 4: Interactive Local Chat ---" )
+println( "All responses are generated locally. Your data never leaves this machine." )
+println( "" )
+
+while ( true ) {
+    userInput = cliRead( "You (or 'exit' | 'models'): " ).trim()
+
+    if ( userInput == "exit" || userInput == "q" ) { break }
+
+    if ( userInput == "models" ) {
+        println( "Available local models:" )
+        getAvailableModels().each( ( m ) => println( "  * " & m.name ) )
+        continue
+    }
+
+    if ( userInput.isEmpty() ) { continue }
+
+    print( "Agent (" & selectedModel & "): " )
+    localAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        userInput
+    )
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * bx-ai's Ollama provider works with ANY model available in your Ollama instance" )
+println( "  * The agent API is identical to cloud — only the model: and provider: change" )
+println( "  * Local models are ideal for: privacy, cost control, offline, and dev environments" )
+println( "  * Cloud models still win on: complex reasoning, latest knowledge, large context" )
+println( "  * Recommended local models: llama3.2 (general), mistral (coding), nomic-embed-text (RAG)" )

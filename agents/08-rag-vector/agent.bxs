@@ -1,0 +1,299 @@
+/**
+ * Agent Example 08: Vector DB RAG with ChromaDB
+ *
+ * Production-grade RAG using:
+ *   - OpenAI text-embedding-3-small for semantic embeddings
+ *   - ChromaDB (running via Docker) for vector storage and similarity search
+ *
+ * Keyword matching (example 07) breaks down on paraphrasing:
+ *   "How much does support cost?" scores 0 against "Support Plans: $499/month"
+ *   because "cost" ≠ "plans" and "$499" is not a keyword.
+ * Semantic embeddings capture MEANING — the query and the document
+ * point to nearby regions of vector space regardless of exact wording.
+ *
+ * Architecture:
+ *   1. Index phase (first run): embed each chunk, store in ChromaDB
+ *   2. Query phase (every run): embed query, retrieve top-k by cosine distance
+ *   3. Answer phase: inject retrieved chunks as context for the agent
+ *
+ * Prerequisites:
+ *   docker compose up -d chromadb    (from docker-compose.yml in repo root)
+ *   OPENAI_API_KEY=<your key>        (for embeddings + completion)
+ *
+ * Run:
+ *   boxlang agents/08-rag-vector/agent.bxs
+ */
+
+println( "==========================================" )
+println( "Agent 08: Vector DB RAG (ChromaDB)" )
+println( "==========================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+CHROMA_URL      = systemEnvironment[ "CHROMA_BASE_URL" ] ?: "http://localhost:8000"
+OPENAI_API_KEY  = systemEnvironment[ "OPENAI_API_KEY" ] ?: ""
+EMBED_MODEL     = "text-embedding-3-small"
+COLLECTION_NAME = "ortus-knowledge-base"
+CHUNK_SIZE      = 600
+CHUNK_OVERLAP   = 120
+TOP_K           = 4
+docsPath        = expandPath( "./docs" )
+
+if ( OPENAI_API_KEY.isEmpty() ) {
+    println( "ERROR: OPENAI_API_KEY is not set in your .env file." )
+    println( "  This example uses OpenAI embeddings. Please set the key and retry." )
+    abort
+}
+
+// ---------------------------------------------------------------------------
+// HTTP helpers for ChromaDB REST API and OpenAI Embeddings
+// ---------------------------------------------------------------------------
+
+function chromaGet( path ) {
+    var http = new Http( method="GET", url=CHROMA_URL & path )
+    return http.send().getPrefix()
+}
+
+function chromaPost( path, body ) {
+    var http = new Http( method="POST", url=CHROMA_URL & path )
+    http.addParam( type="header", name="Content-Type", value="application/json" )
+    http.addParam( type="body", value=serializeJSON( body ) )
+    return http.send().getPrefix()
+}
+
+function chromaDelete( path ) {
+    var http = new Http( method="DELETE", url=CHROMA_URL & path )
+    return http.send().getPrefix()
+}
+
+/**
+ * Get vector embedding for a text string via OpenAI.
+ * Returns an array of floats (1536 dimensions for text-embedding-3-small).
+ */
+function getEmbedding( text ) {
+    var http = new Http( method="POST", url="https://api.openai.com/v1/embeddings" )
+    http.addParam( type="header", name="Authorization", value="Bearer " & OPENAI_API_KEY )
+    http.addParam( type="header", name="Content-Type",  value="application/json" )
+    http.addParam( type="body", value=serializeJSON({
+        model: EMBED_MODEL,
+        input: text.left( 8000 )
+    }))
+    var result = http.send().getPrefix()
+    if ( val( result.status_code ) != 200 ) {
+        throw( type="EmbeddingError", message="OpenAI embedding failed: " & result.fileContent )
+    }
+    return deserializeJSON( result.fileContent ).data[1].embedding
+}
+
+// ---------------------------------------------------------------------------
+// STEP 1: Verify ChromaDB is reachable
+// ---------------------------------------------------------------------------
+println( "Checking ChromaDB at " & CHROMA_URL & "..." )
+try {
+    var hb = chromaGet( "/api/v1/heartbeat" )
+    if ( val( hb.status_code ) != 200 ) {
+        throw( type="ChromaUnavailable", message="ChromaDB returned HTTP " & hb.status_code )
+    }
+    println( "ChromaDB is online." )
+} catch ( any e ) {
+    println( "ERROR: Cannot reach ChromaDB at " & CHROMA_URL )
+    println( "  Make sure it is running: docker compose up -d chromadb" )
+    println( "  Error: " & e.message )
+    abort
+}
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 2: Get or create the ChromaDB collection
+// ---------------------------------------------------------------------------
+
+function getOrCreateCollection( name ) {
+    // Try to get the existing collection
+    var listResp = chromaGet( "/api/v1/collections" )
+    var collections = deserializeJSON( listResp.fileContent )
+
+    for ( var col in collections ) {
+        if ( col.name == name ) {
+            println( "Using existing collection: " & name & " (" & col.id & ")" )
+            return col.id
+        }
+    }
+
+    // Create new collection with cosine distance metric
+    println( "Creating new collection: " & name )
+    var createResp = chromaPost( "/api/v1/collections", {
+        name    : name,
+        metadata: { "hnsw:space": "cosine" }
+    })
+    var created = deserializeJSON( createResp.fileContent )
+    println( "Collection created: " & created.id )
+    return created.id
+}
+
+collectionId = getOrCreateCollection( COLLECTION_NAME )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 3: Index documents (skip if already indexed)
+// ---------------------------------------------------------------------------
+
+function chunkText( text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP ) {
+    var chunks = []
+    var start  = 1
+    while ( start <= text.len() ) {
+        var finish = min( start + size - 1, text.len() )
+        if ( finish < text.len() ) {
+            var nlPos = text.find( chr(10), finish )
+            if ( nlPos > 0 && nlPos < finish + 100 ) { finish = nlPos }
+        }
+        chunks.append( text.mid( start, finish - start + 1 ).trim() )
+        start = max( start + 1, finish - overlap + 1 )
+    }
+    return chunks
+}
+
+// Check how many documents are already indexed
+var countResp = chromaGet( "/api/v1/collections/" & collectionId & "/count" )
+var existingCount = val( deserializeJSON( countResp.fileContent ) )
+
+if ( existingCount > 0 ) {
+    println( "Collection already has " & existingCount & " chunks — skipping indexing." )
+    println( "(Delete the collection to re-index: docker compose exec chromadb ...)" )
+} else {
+    println( "Indexing documents from: " & docsPath )
+    docFiles = directoryList( docsPath, false, "path", "*.txt" )
+    totalChunks = 0
+
+    docFiles.each( ( filePath ) => {
+        var fileName = listLast( filePath, "/\" )
+        var content  = fileRead( filePath )
+        var chunks   = chunkText( content )
+
+        println( "  Embedding: " & fileName & " → " & chunks.len() & " chunks" )
+
+        chunks.each( ( chunk, idx ) => {
+            var docId    = fileName & "::" & idx
+            var embedding = getEmbedding( chunk )
+
+            chromaPost( "/api/v1/collections/" & collectionId & "/add", {
+                ids       : [ docId ],
+                embeddings: [ embedding ],
+                documents : [ chunk ],
+                metadatas : [{ source: fileName, chunk_index: idx }]
+            })
+
+            totalChunks++
+            print( "." )
+        })
+        println( "" )
+    })
+
+    println( "Indexed " & totalChunks & " chunks successfully." )
+}
+println( "" )
+
+// ---------------------------------------------------------------------------
+// STEP 4: Semantic retrieval function
+// ---------------------------------------------------------------------------
+
+function retrieve( query, topK=TOP_K ) {
+    var queryEmbedding = getEmbedding( query )
+
+    var resp = chromaPost( "/api/v1/collections/" & collectionId & "/query", {
+        query_embeddings: [ queryEmbedding ],
+        n_results       : topK,
+        include         : [ "documents", "metadatas", "distances" ]
+    })
+
+    var data = deserializeJSON( resp.fileContent )
+
+    var results = []
+    var docs      = data.documents[1]
+    var metas     = data.metadatas[1]
+    var distances = data.distances[1]
+
+    for ( var i = 1; i <= docs.len(); i++ ) {
+        results.append({
+            content  : docs[i],
+            source   : metas[i].source,
+            score    : round( (1 - distances[i]) * 100, 1 )  // convert cosine distance → similarity %
+        })
+    }
+
+    return results
+}
+
+// ---------------------------------------------------------------------------
+// STEP 5: RAG-powered Q&A agent
+// ---------------------------------------------------------------------------
+
+ragAgent = aiAgent(
+    name        : "ortus-support-agent",
+    description : "Customer support agent for Ortus Solutions products and services.",
+    instructions: "You are a knowledgeable support agent for Ortus Solutions.
+    Answer questions using ONLY the context provided.
+    If the context does not contain the answer, say: 'I don't have that information in my knowledge base. Please contact support@ortussolutions.com'
+    Always cite the source document at the end of your answer.
+    Be friendly, professional, and concise."
+)
+
+println( "Agent: " & ragAgent.getName() )
+println( "Vector DB: ChromaDB @ " & CHROMA_URL )
+println( "" )
+println( "Ask questions about Ortus products, pricing, support plans, or technical topics." )
+println( "Example questions:" )
+println( "  - How much does enterprise support cost?" )
+println( "  - What's the difference between BoxLang and ColdFusion?" )
+println( "  - Does bx-ai support local AI models?" )
+println( "  - What payment methods are accepted?" )
+println( "" )
+
+while ( true ) {
+    userQuery = cliRead( "You (or 'exit'): " ).trim()
+    if ( userQuery == "exit" || userQuery == "q" ) { break }
+    if ( userQuery.isEmpty() ) { continue }
+
+    // Semantic retrieval
+    print( "  [retrieving from vector DB...] " )
+    retrieved = retrieve( userQuery )
+    println( "" )
+
+    if ( retrieved.isEmpty() ) {
+        println( "Agent: I couldn't find relevant information for that question." )
+        println( "" )
+        continue
+    }
+
+    // Show retrieval details
+    println( "  Retrieved " & retrieved.len() & " chunks:" )
+    retrieved.each( ( r ) => {
+        println( "    [" & r.score & "% match] " & r.source & " — " & r.content.left(60) & "..." )
+    })
+    println( "" )
+
+    // Build context from retrieved chunks
+    contextText = retrieved.map( ( r ) => {
+        return "[Source: " & r.source & " (" & r.score & "% relevance)]\n" & r.content
+    }).toList( chr(10) & chr(10) & "---" & chr(10) & chr(10) )
+
+    message = aiMessage()
+        .system( ragAgent.getConfig().instructions )
+        .user( "Context from knowledge base:\n\n" & contextText & "\n\n---\n\nQuestion: " & userQuery )
+
+    print( "Agent: " )
+    aiChatStream(
+        message,
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" )
+    )
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * Semantic embeddings capture meaning, not just keywords" )
+println( "  * ChromaDB stores vectors and returns top-k by cosine similarity" )
+println( "  * Index once, query many times — the collection persists across runs" )
+println( "  * Similarity scores show how well each chunk matches the query" )
+println( "  * For production: add re-ranking, hybrid search, and metadata filtering" )

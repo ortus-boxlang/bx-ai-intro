@@ -1,0 +1,118 @@
+ORTUS SOLUTIONS PRODUCT CATALOG
+================================
+
+BOXLANG RUNTIME
+Product ID: BL-RUNTIME-001
+Category: Language Runtime
+Price: Free (open source) / Commercial support available
+License: Apache 2.0
+
+Description:
+BoxLang is a modern, open-source JVM scripting language. The runtime includes the core language engine, module loader, and all standard library functions. Suitable for CLI scripting, web applications, serverless functions, and enterprise backends.
+
+Features:
+- Multi-runtime support: CLI, web server, Lambda, Android, iOS
+- Full Java interoperability
+- Modern syntax: lambdas, closures, null-safe operators, named arguments
+- 200+ built-in functions (BIFs)
+- Module system for extensible capabilities
+- Built-in concurrency with runAsync()
+
+System Requirements: JDK 21+, 256MB RAM minimum
+
+---
+
+COMMANDBOX PRO
+Product ID: CB-PRO-001
+Category: Developer Tooling
+Price: $299/year per developer
+License: Commercial
+
+Description:
+CommandBox Pro is the professional tier of the CommandBox package manager and CLI for BoxLang and CFML. Includes all open-source features plus advanced capabilities for enterprise development teams.
+
+Features:
+- Package management (ForgeBox registry with 2000+ packages)
+- Task runners and build automation
+- Environment-specific configuration management
+- Server management (start, stop, restart, cluster)
+- Embedded web server with SSL, HTTP/2, and GZIP
+- Pro-only: Team collaboration features
+- Pro-only: Priority support with 4-hour SLA
+- Pro-only: Private ForgeBox repositories
+
+System Requirements: JDK 21+, Windows/macOS/Linux
+
+---
+
+BX-AI MODULE
+Product ID: BX-AI-001
+Category: AI/ML Integration Module
+Price: Free (open source)
+License: Apache 2.0
+
+Description:
+The official bx-ai module brings state-of-the-art AI capabilities to BoxLang. Connect to any major AI provider, build autonomous agents, create RAG pipelines, and add speech capabilities — all with BoxLang's clean, idiomatic API.
+
+Features:
+- Unified API across 12+ AI providers (OpenAI, Claude, Gemini, Perplexity, Ollama, etc.)
+- AI agents with memory, tools, sub-agents, skills, and middleware
+- Streaming responses for real-time UX
+- Pipeline builder for chained AI operations
+- Structured output: parse AI responses directly into typed BoxLang classes
+- Text-to-speech, speech-to-text, and audio translation
+- RAG support with vector embeddings
+- MCP (Model Context Protocol) server support
+
+---
+
+CONTENTBOX CMS
+Product ID: CB-CMS-001
+Category: Content Management System
+Price: Free (community) / $799/year (enterprise)
+License: Apache 2.0 (community) / Commercial (enterprise)
+
+Description:
+ContentBox is a modular, enterprise-grade CMS built on BoxLang/CFML. Power websites, portals, and headless content APIs with a modern admin experience and extensible widget/module system.
+
+Features:
+- Visual page builder with drag-and-drop blocks
+- Multi-site management from a single installation
+- Headless API mode (REST/GraphQL)
+- Enterprise: Active Directory/LDAP authentication
+- Enterprise: Multi-region CDN integration
+- Enterprise: Advanced audit logging
+
+---
+
+COLDBOX MVC FRAMEWORK
+Product ID: CB-MVC-001
+Category: Web Framework
+Price: Free (open source)
+License: Apache 2.0
+
+Description:
+ColdBox is the most widely used MVC framework for CFML and BoxLang. Build structured, testable web applications with convention-over-configuration design, a rich interceptor/event system, and first-class BoxLang support.
+
+Features:
+- MVC architecture with clean URL routing
+- Dependency injection via WireBox
+- Async/await support with Futures
+- REST API framework built-in
+- TestBox integration for BDD/TDD
+- 1000+ open-source modules on ForgeBox
+
+---
+
+SUPPORT PLANS
+Plan: Developer Support
+Price: $149/month
+Includes: Email support, 48-hour response SLA, community Slack access
+
+Plan: Business Support
+Price: $499/month
+Includes: Priority email + Slack, 8-hour SLA, monthly consulting call (1 hour)
+
+Plan: Enterprise Support
+Price: $1,999/month
+Includes: Dedicated engineer, 2-hour SLA, unlimited consulting, on-site training (2 days/year)
