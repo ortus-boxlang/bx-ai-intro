@@ -1,0 +1,185 @@
+/**
+ * Agent Example 02: Research Agent with Explicit Web-Search Tools
+ *
+ * Instead of a search-native provider, we build explicit HTTP tools so the
+ * agent controls exactly what it fetches and how results are formatted.
+ * This approach works with ANY provider and lets you swap search backends.
+ *
+ * Tools built here:
+ *   webSearch  — DuckDuckGo Instant Answer API (free, no key required)
+ *   fetchPage  — Retrieves and strips HTML from any URL for deeper reading
+ *   summarize  — Distils long content using a second AI call
+ *
+ * What you'll learn:
+ * - Building HTTP-based tools with aiTool()
+ * - Multi-tool research: search → fetch → summarize
+ * - How the agent decides when and which tool to call
+ * - Streaming progressive research output
+ *
+ * Run:
+ *   boxlang agents/02-research/agent.bxs
+ */
+
+println( "=============================================" )
+println( "Agent 02: Research Agent (Custom Search Tools)" )
+println( "=============================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Tool: webSearch — DuckDuckGo Instant Answers (no API key)
+// ---------------------------------------------------------------------------
+webSearch = aiTool(
+    "webSearch",
+    "Search the web for a topic. Returns a summary, the source URL, and up to 5 related topics.",
+    ( query ) => {
+        try {
+            var http   = new Http( method="GET", url="https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" & encodeForURL( query ) )
+            var result = http.send().getPrefix()
+
+            if ( val( result.status_code ) != 200 ) {
+                return "Search unavailable (HTTP " & result.status_code & "). Try a different query."
+            }
+
+            var data    = deserializeJSON( result.fileContent )
+            var summary = data.Abstract ?: ""
+            var srcUrl  = data.AbstractURL ?: ""
+            var topics  = data.RelatedTopics ?: []
+
+            var relatedLines = []
+            var count = 0
+            topics.each( ( t ) => {
+                if ( count < 5 && t.keyExists( "Text" ) ) {
+                    relatedLines.append( "- " & t.Text )
+                    count++
+                }
+            })
+
+            var output = ""
+            if ( summary.len() ) {
+                output &= "## Summary\n" & summary
+                if ( srcUrl.len() ) { output &= "\nSource: " & srcUrl }
+            } else {
+                output &= "## Summary\nNo instant answer found for this query."
+            }
+
+            if ( !relatedLines.isEmpty() ) {
+                output &= "\n\n## Related Topics\n" & relatedLines.toList( chr(10) )
+            }
+
+            return output
+        } catch ( any e ) {
+            return "Search error: " & e.message
+        }
+    }
+).describeQuery( "The search query, e.g. 'BoxLang JVM language features'" )
+
+// ---------------------------------------------------------------------------
+// Tool: fetchPage — Retrieve and clean text from any URL
+// ---------------------------------------------------------------------------
+fetchPage = aiTool(
+    "fetchPage",
+    "Fetch the text content of a web page for deeper reading. Strips HTML and returns the first 4000 characters.",
+    ( url ) => {
+        try {
+            var http = new Http( method="GET", url=url )
+            http.addParam( type="header", name="User-Agent", value="BoxLang-ResearchAgent/1.0" )
+            http.addParam( type="header", name="Accept",     value="text/html,text/plain" )
+            var result = http.send().getPrefix()
+
+            if ( val( result.status_code ) != 200 ) {
+                return "Could not fetch page (HTTP " & result.status_code & ")."
+            }
+
+            // Strip HTML tags, collapse whitespace, trim to 4000 chars
+            var text = result.fileContent
+                .reReplace( "<style[^>]*>.*?</style>", " ", "ALL" )
+                .reReplace( "<script[^>]*>.*?</script>", " ", "ALL" )
+                .reReplace( "<[^>]+>", " ", "ALL" )
+                .reReplace( "&[a-z]+;", " ", "ALL" )
+                .reReplace( "\s{2,}", " ", "ALL" )
+                .trim()
+                .left( 4000 )
+
+            return text.len() ? text : "No readable content found on this page."
+        } catch ( any e ) {
+            return "Error fetching page: " & e.message
+        }
+    }
+).describeUrl( "Full URL to fetch, e.g. 'https://boxlang.io'" )
+
+// ---------------------------------------------------------------------------
+// Tool: summarize — Use AI to distil long content into bullet points
+// ---------------------------------------------------------------------------
+summarize = aiTool(
+    "summarize",
+    "Summarize a long piece of text into concise bullet points.",
+    ( text ) => {
+        return aiChat(
+            "Summarize the following text into 5 concise bullet points:\n\n" & text.left( 6000 ),
+            { model: "openrouter/auto", max_tokens: 400 }
+        )
+    }
+).describeText( "The text content to summarize (up to 6000 characters)" )
+
+// ---------------------------------------------------------------------------
+// Research agent — orchestrates the three tools
+// ---------------------------------------------------------------------------
+researchAgent = aiAgent(
+    name        : "research-agent",
+    description : "A thorough research assistant that searches, reads, and summarizes.",
+    instructions: "You are an expert research assistant. When researching a topic:
+    1. Call webSearch() first to get an overview and related topics
+    2. If deeper information is needed, call fetchPage() on the most relevant URL
+    3. For long content, call summarize() to extract key points
+    4. Combine your findings into a clear, structured report with:
+       - Executive Summary
+       - Key Findings (bullet points)
+       - Sources (URLs)
+    Always distinguish between facts from your sources and your own analysis.",
+    model: aiModel(),
+    tools: [ webSearch, fetchPage, summarize ]
+)
+
+println( "Agent : " & researchAgent.getName() )
+println( "Tools : webSearch | fetchPage | summarize" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Interactive research loop
+// ---------------------------------------------------------------------------
+while ( true ) {
+    topic = cliRead( "Research topic (or 'exit'): " ).trim()
+
+    if ( topic == "exit" || topic == "q" || topic.isEmpty() ) {
+        if ( topic == "exit" || topic == "q" ) { break }
+        continue
+    }
+
+    println( "" )
+    print( "Agent: " )
+
+    sawToolCall = false
+
+    researchAgent.stream(
+        ( chunk ) => {
+            var content   = chunk.choices?.first()?.delta?.content ?: ""
+            var toolCalls = chunk.choices?.first()?.delta?.tool_calls ?: []
+
+            if ( toolCalls.len() && !sawToolCall ) {
+                print( chr(10) & "[calling tools...] " )
+                sawToolCall = true
+            }
+            print( content )
+        },
+        "Research this topic thoroughly and write a structured report: " & topic
+    )
+
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * Any provider can get web search via custom HTTP tools" )
+println( "  * The agent chains tools autonomously: search → fetch → summarize" )
+println( "  * DuckDuckGo Instant Answers API is free with no key required" )
+println( "  * Tool errors are handled gracefully and reported back to the agent" )

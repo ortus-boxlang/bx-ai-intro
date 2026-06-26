@@ -1,0 +1,112 @@
+AI AGENT PATTERNS AND BEST PRACTICES
+=====================================
+
+This guide covers proven patterns for building reliable, production-ready AI agents with the bx-ai module.
+
+PATTERN 1: TOOL-FIRST AGENTS
+When agents need to interact with external systems, define explicit tools rather than asking the model to generate code. Tools are deterministic, testable, and controllable.
+
+Best practices for tools:
+- Keep each tool focused on a single responsibility
+- Return structured data (structs/arrays) rather than formatted strings when possible — the model can format for display
+- Always handle errors inside tools and return descriptive error messages
+- Use describeParamName() to provide clear parameter documentation
+- Validate inputs inside the tool rather than trusting the model
+
+Example: A good getWeather tool returns { temp: 22, units: "C", conditions: "Sunny" } rather than "It is 22°C and sunny" so the agent can compose the final message in context.
+
+PATTERN 2: HIERARCHICAL AGENTS (ORCHESTRATOR + SPECIALISTS)
+Break complex tasks into specialised agents coordinated by an orchestrator. Each specialist has a narrow, well-defined role.
+
+Rules for good hierarchical design:
+- Orchestrators should coordinate, not do domain work themselves
+- Specialists should be stateless when possible — pass all context in the prompt
+- Define clear handoff contracts: what does a sub-agent receive and return?
+- Limit orchestrator depth to 2-3 levels to avoid cascading failures
+- Log every delegation step with LoggingMiddleware
+
+PATTERN 3: MEMORY TIERING
+Match memory type to the use case:
+- In-session state → WindowMemory (default)
+- Long conversations → SummaryMemory (prevents context overflow)
+- User persistence → FileMemory or CacheMemory
+- Multi-agent shared state → CacheMemory with Redis
+
+Never give all agents FileMemory unless you want disk I/O on every turn. Reserve persistence for long-lived user contexts.
+
+PATTERN 4: SKILLS AS MODULAR EXPERTISE
+Prefer skills over embedding domain knowledge in instructions.
+
+Always-on skills (skills: []): Use for:
+- Communication style rules (small, always relevant)
+- Core brand/tone guidelines
+- Safety policies
+
+Lazy skills (availableSkills: []): Use for:
+- Deep domain knowledge (finance, legal, medical)
+- Methodology guides (code review, security)
+- Reference material (API docs, data dictionaries)
+
+PATTERN 5: CONTEXT INJECTION (POOR MAN'S RAG)
+For structured datasets that fit in context, use aiMessage().mergeContext(data) and .bind(vars) to inject data directly.
+
+Good for: customer records, product catalogs <1000 rows, config files, API responses.
+Not suitable for: large document corpora, unstructured text, >50k tokens of data.
+
+PATTERN 6: RETRIEVAL-AUGMENTED GENERATION (RAG)
+For large knowledge bases, retrieve only the relevant chunks.
+
+Basic RAG pipeline:
+1. Chunk documents (500-1000 tokens per chunk, with 100-token overlap)
+2. Embed each chunk with a text embedding model
+3. Store embeddings in a vector DB (ChromaDB, Qdrant, Pinecone)
+4. At query time: embed the query, retrieve top-k chunks by cosine similarity
+5. Inject chunks as context: aiMessage().mergeContext({ docs: topChunks })
+
+Chunking strategies:
+- Fixed size: simple but may split sentences
+- Sentence-aware: chunk at sentence boundaries
+- Semantic: group by topic/section (better quality, more complex)
+
+PATTERN 7: GUARDRAILS AND HUMAN-IN-THE-LOOP
+For any agent that can take irreversible actions:
+1. Use GuardrailMiddleware to block dangerous tool calls by name or parameter pattern
+2. Use HumanInTheLoopMiddleware for actions requiring approval (delete, deploy, send email)
+3. Log everything with LoggingMiddleware for audit trails
+4. Test with FlightRecorderMiddleware before going to production
+
+PATTERN 8: STREAMING FOR BETTER UX
+Always stream long-running agents to prevent timeout feelings:
+  agent.stream( (chunk) => {
+      var content = chunk.choices?.first()?.delta?.content ?: ""
+      var tools   = chunk.choices?.first()?.delta?.tool_calls ?: []
+      // Show tool calls as visual feedback
+      if ( tools.len() ) { print( "[working...]" ) }
+      print( content )
+  }, userInput )
+
+PATTERN 9: GRACEFUL DEGRADATION
+Design agents to handle provider failures gracefully:
+- Catch errors in tool callbacks and return descriptive messages
+- Use try/catch in stream callbacks to prevent crashes
+- Define fallback behavior when a sub-agent fails
+- Never let a tool error crash the whole agent session
+
+PATTERN 10: COST CONTROL
+AI API costs scale with tokens. Control costs by:
+- Use cheaper/smaller models for classification and routing tasks
+- Use powerful models only for final synthesis and generation
+- Set max_tokens to cap runaway responses
+- Cache repeat queries in Redis with aiMemory("cache")
+- Use SummaryMemory to compress long conversations before they hit context limits
+- Log token usage per run and set budget alerts
+
+AGENT DESIGN CHECKLIST
+- [ ] Each agent has a single, clear purpose
+- [ ] Instructions are specific, not vague ("Be helpful" → bad, "When given X, do Y then Z" → good)
+- [ ] All tools have error handling
+- [ ] Memory is appropriate for the use case
+- [ ] Sensitive operations have guardrails or human approval
+- [ ] Streaming is enabled for user-facing agents
+- [ ] Logging is enabled in production
+- [ ] Tested with FlightRecorder before deployment

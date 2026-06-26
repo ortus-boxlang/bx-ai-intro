@@ -1,0 +1,178 @@
+/**
+ * Agent Example 04: Persistent Memory Agent
+ *
+ * Agents normally forget everything when the process exits.
+ * This example shows how to give an agent durable memory that survives
+ * across separate BoxLang runs using file-backed storage.
+ *
+ * Memory layers used:
+ *   FileMemory    — Persists every message to disk as JSON.  Survives restarts.
+ *   SummaryMemory — Compresses old messages into a rolling summary to stay
+ *                   within context limits, then also persists that summary.
+ *
+ * What you'll learn:
+ * - Creating persistent file memory with aiMemory("file")
+ * - Creating auto-summarising memory with aiMemory("summary")
+ * - Combining both memory types on one agent
+ * - Searching, exporting, and clearing memory
+ * - How the agent "remembers" a user across sessions
+ *
+ * Run:
+ *   boxlang agents/04-memory/agent.bxs   # first run  → introduce yourself
+ *   boxlang agents/04-memory/agent.bxs   # second run → agent remembers you!
+ */
+
+println( "==========================================" )
+println( "Agent 04: Persistent Memory Agent" )
+println( "==========================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Identity — keeps this conversation separate from others
+// ---------------------------------------------------------------------------
+userId         = "demo-user-001"
+conversationId = "personal-assistant-session"
+dataDir        = expandPath( "./data" )
+
+// Create the data directory if it doesn't exist
+if ( !directoryExists( dataDir ) ) {
+    directoryCreate( dataDir )
+}
+
+println( "User ID         : " & userId )
+println( "Conversation ID : " & conversationId )
+println( "Storage path    : " & dataDir )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Memory 1: SummaryMemory — compresses long conversations automatically
+// ---------------------------------------------------------------------------
+summaryMemory = aiMemory(
+    memory: "summary",
+    userId: userId,
+    conversationId: conversationId,
+    config: {
+        summaryThreshold: 6,          // Summarise after every 6 messages
+        summaryProvider: "openrouter",
+        summaryModel: "openrouter/auto"
+    }
+)
+
+// ---------------------------------------------------------------------------
+// Memory 2: FileMemory — writes every message to disk as JSON
+// ---------------------------------------------------------------------------
+fileMemory = aiMemory(
+    memory: "file",
+    userId: userId,
+    conversationId: conversationId,
+    config: {
+        directoryPath: dataDir
+    }
+)
+
+// ---------------------------------------------------------------------------
+// Agent wired with both memory systems
+// ---------------------------------------------------------------------------
+personalAgent = aiAgent(
+    name        : "personal-assistant",
+    description : "A personal assistant that remembers everything you tell it across sessions.",
+    instructions: "You are a personal assistant with a long memory.
+    - Remember details the user shares about themselves (name, preferences, goals, projects)
+    - Refer back to earlier parts of the conversation naturally
+    - If this is not your first conversation with the user, greet them and briefly recap what you remember
+    - Ask follow-up questions to learn more about the user over time",
+    model  : aiModel(),
+    memory : [ summaryMemory, fileMemory ]
+)
+
+println( "Agent ready.  Memory is stored in: " & dataDir )
+println( "" )
+
+// Check whether we have history already
+existingMessages = fileMemory.getAll()
+if ( existingMessages.len() ) {
+    println( "Found " & existingMessages.len() & " messages from a previous session!" )
+} else {
+    println( "No previous session found — starting fresh." )
+    println( "Try introducing yourself: 'Hi, my name is Luis and I work with BoxLang.'" )
+}
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Interactive conversation loop
+// ---------------------------------------------------------------------------
+while ( true ) {
+    userInput = cliRead( "You (or 'exit' | 'memory' | 'search <term>' | 'clear'): " ).trim()
+
+    if ( userInput == "exit" || userInput == "q" ) { break }
+
+    if ( userInput == "memory" ) {
+        println( "" )
+        println( "=== Memory Snapshot ===" )
+        allMsgs = fileMemory.getAll()
+        println( "Total messages stored : " & allMsgs.len() )
+
+        recent = fileMemory.getRecent( 4 )
+        println( "Last 4 messages:" )
+        recent.each( ( msg, i ) => {
+            println( "  [" & msg.role & "] " & msg.content.left( 80 ) & ( msg.content.len() > 80 ? "..." : "" ) )
+        })
+
+        summary = summaryMemory.getSummary()
+        println( "" )
+        println( "Rolling summary: " & ( summary.len() ? summary : "(not yet summarised)" ) )
+        println( "======================" )
+        println( "" )
+        continue
+    }
+
+    if ( userInput.left( 7 ) == "search " ) {
+        term = userInput.right( userInput.len() - 7 ).trim()
+        println( "" )
+        hits = fileMemory.search( term, false )
+        println( "Search '" & term & "' → " & hits.len() & " messages found" )
+        hits.each( ( msg ) => {
+            println( "  [" & msg.role & "] " & msg.content.left( 120 ) )
+        })
+        println( "" )
+        continue
+    }
+
+    if ( userInput == "clear" ) {
+        confirm = cliRead( "Clear ALL memory for this conversation? (yes/no): " ).trim().toLowerCase()
+        if ( confirm == "yes" ) {
+            fileMemory.clear()
+            summaryMemory.clear()
+            println( "Memory cleared." )
+        }
+        continue
+    }
+
+    if ( userInput.isEmpty() ) { continue }
+
+    print( "Agent: " )
+    personalAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        userInput
+    )
+    println( "" )
+    println( "" )
+}
+
+// ---------------------------------------------------------------------------
+// End-of-session stats
+// ---------------------------------------------------------------------------
+println( "=== Session Summary ===" )
+exported = fileMemory.export()
+println( "Messages stored to disk : " & exported.messages.len() )
+println( "Conversation ID         : " & exported.conversationId )
+println( "Storage file            : " & dataDir )
+println( "" )
+println( "Run this script again — the agent will remember today's conversation!" )
+println( "" )
+println( "KEY TAKEAWAYS:" )
+println( "  * aiMemory('file') persists every message to disk as JSON" )
+println( "  * aiMemory('summary') compresses old turns so the context stays small" )
+println( "  * Passing both in memory: [] gives you durability + efficiency" )
+println( "  * .getAll() / .getRecent() / .search() give programmatic access to memory" )
+println( "  * userId + conversationId scope memory to a specific user & thread" )

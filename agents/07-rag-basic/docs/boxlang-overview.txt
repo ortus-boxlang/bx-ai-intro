@@ -1,0 +1,87 @@
+BOXLANG LANGUAGE OVERVIEW
+========================
+
+BoxLang is a modern, open-source, multi-runtime JVM scripting language developed by Ortus Solutions. It is designed to be dynamic, modular, and highly performant, running natively on the Java Virtual Machine (JVM).
+
+HISTORY AND PURPOSE
+BoxLang was created as a next-generation evolution of CFML (ColdFusion Markup Language), a language with over 25 years of history in web development. BoxLang retains CFML's developer-friendly productivity while adding modern language features, better performance, and a completely new modular architecture.
+
+CORE PHILOSOPHY
+- Developer productivity first: concise syntax, no boilerplate
+- Multi-runtime: same code runs in CLI, web server, Lambda, Android, and iOS
+- Modular by design: every feature is a module — add only what you need
+- JVM power: full Java interoperability, access to the entire Java ecosystem
+- CFML compatible: existing CFML apps can run with minimal changes
+
+SYNTAX HIGHLIGHTS
+BoxLang supports two primary syntaxes:
+1. Script syntax (.bxs files): Clean, modern scripting style
+2. Template syntax (.bxm files): Mixed HTML/code like traditional CFML
+
+Key language features:
+- Dynamic typing with optional type annotations
+- Lambda expressions and closures: (x) => x * 2
+- Functional programming: map(), filter(), reduce(), each()
+- String interpolation: "Hello, #name#!"
+- Null-safe operator: value?.nested?.property
+- Elvis operator: value ?: defaultValue
+- Named arguments: myFunction(name: "value", type: "string")
+- Structural typing: pass any struct matching an expected shape
+
+BUILT-IN FUNCTIONS (BIFs)
+BoxLang ships with hundreds of BIFs covering:
+- String manipulation: len(), left(), right(), trim(), reReplace()
+- Array operations: append(), prepend(), filter(), map(), reduce()
+- Struct operations: keyExists(), keys(), values(), each()
+- Date/time: now(), dateAdd(), dateDiff(), parseDateTime()
+- Math: abs(), ceiling(), floor(), round(), sqrt(), log()
+- JSON: serializeJSON(), deserializeJSON()
+- File I/O: fileRead(), fileWrite(), fileExists(), directoryList()
+- System: expandPath(), systemExecute(), sleep()
+
+MODULE SYSTEM
+BoxLang's module system is its killer feature. Modules extend the runtime with new BIFs, components, and capabilities without modifying the core:
+- bx-ai: AI/LLM integration (the focus of this tutorial)
+- bx-http: HTTP client functionality
+- bx-mail: Email sending
+- bx-pdf: PDF generation
+- bx-orm: Database ORM
+- bx-esapi: Security encoding
+- bx-compat-cfml: CFML compatibility layer
+
+RUNTIME ENVIRONMENTS
+BoxLang runs in multiple environments:
+- BoxLang CLI: run .bxs scripts from the terminal
+- BoxLang MiniServer: lightweight embedded web server
+- CommandBox: package manager and development server
+- AWS Lambda: serverless BoxLang functions
+- Docker: containerised BoxLang apps
+
+PERFORMANCE
+BoxLang is 40-60% faster than ColdFusion in benchmarks due to:
+- A modern bytecode compiler built from scratch
+- JIT compilation via the JVM
+- Lazy class loading and minimal startup overhead
+- Efficient memory management with configurable GC tuning
+
+JAVA INTEROPERABILITY
+BoxLang can instantiate and call any Java class:
+  myObject = createObject("java", "java.util.HashMap")
+  myList = createObject("java", "java.util.ArrayList")
+  myObject.put("key", "value")
+
+This gives BoxLang developers access to the entire Java ecosystem including Apache libraries, Spring components, and any Maven artifact.
+
+GETTING STARTED
+Install BoxLang via CommandBox:
+  box install boxlang
+  boxlang hello.bxs
+
+Or run with Docker:
+  docker run --rm ortussolutions/boxlang:latest boxlang hello.bxs
+
+Official resources:
+- Website: https://boxlang.io
+- Docs: https://boxlang.ortusbooks.com
+- GitHub: https://github.com/ortus-boxlang/BoxLang
+- Community: https://community.ortussolutions.com

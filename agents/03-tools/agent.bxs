@@ -1,0 +1,293 @@
+/**
+ * Agent Example 03: Tool-Rich Agent
+ *
+ * Demonstrates a production-style agent equipped with multiple utility tools.
+ * The agent autonomously picks the right tool(s) for each request and can
+ * chain them together to answer complex questions.
+ *
+ * Tools included:
+ *   calculator     — Evaluate mathematical expressions safely
+ *   unitConverter  — Convert between length, weight, temperature, speed, …
+ *   timeZone       — Get current time in any city / timezone
+ *   currencyQuote  — Live exchange rates (uses exchangerate.host — free, no key)
+ *   weatherNow     — Current weather via wttr.in (free, no key)
+ *
+ * What you'll learn:
+ * - Defining tools with typed parameter descriptions
+ * - Multi-tool orchestration (the agent chains tools automatically)
+ * - Safe expression evaluation in BoxLang
+ * - Calling free public APIs from tool callbacks
+ *
+ * Run:
+ *   boxlang agents/03-tools/agent.bxs
+ */
+
+println( "=============================================" )
+println( "Agent 03: Tool-Rich Agent" )
+println( "=============================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Tool 1: Calculator — evaluate math expressions
+// ---------------------------------------------------------------------------
+calculator = aiTool(
+    "calculator",
+    "Evaluate a mathematical expression and return the numeric result. Supports +, -, *, /, ^, sqrt(), log(), abs(), round(), floor(), ceiling().",
+    ( expression ) => {
+        try {
+            // Replace common math keywords to BoxLang-safe forms
+            var expr = expression
+                .reReplace( "(?i)\bsqrt\b", "sqr", "ALL" )    // sqr() in BoxLang
+                .reReplace( "(?i)\bpow\(([^,]+),([^)]+)\)", "(\1)^(\2)", "ALL" )
+                .reReplace( "[^0-9+\-*/^().sqrtlogabsroundfloorceiling ]", "", "ALL" )
+
+            var result = evaluate( expr )
+            return "Result: " & result
+        } catch ( any e ) {
+            return "Cannot evaluate '" & expression & "': " & e.message
+        }
+    }
+).describeExpression( "The math expression to evaluate, e.g. '(15 * 4) / 3 + sqrt(81)'" )
+
+// ---------------------------------------------------------------------------
+// Tool 2: Unit Converter
+// ---------------------------------------------------------------------------
+unitConverter = aiTool(
+    "unitConverter",
+    "Convert a value between units of measurement. Supports: length (km/mi/m/ft/cm/in), weight (kg/lb/g/oz), temperature (C/F/K), speed (kmh/mph), data (GB/MB/KB/bytes).",
+    ( value, fromUnit, toUnit ) => {
+        var v = val( value )
+        var f = fromUnit.toLowerCase().trim()
+        var t = toUnit.toLowerCase().trim()
+
+        // Conversion factors relative to a base unit
+        var length = { km: 1000, m: 1, cm: 0.01, mm: 0.001, mi: 1609.344, ft: 0.3048, "in": 0.0254, yd: 0.9144 }
+        var weight = { kg: 1, g: 0.001, mg: 0.000001, lb: 0.453592, oz: 0.0283495, t: 1000 }
+        var speed  = { kmh: 1, mph: 1.60934, ms: 3.6, knot: 1.852 }
+        var data   = { bytes: 1, kb: 1024, mb: 1048576, gb: 1073741824, tb: 1099511627776 }
+
+        // Temperature needs special-case formulas
+        if ( (f == "c" || f == "celsius") && (t == "f" || t == "fahrenheit") ) {
+            return value & "°C = " & round( v * 9/5 + 32, 2 ) & "°F"
+        }
+        if ( (f == "f" || f == "fahrenheit") && (t == "c" || t == "celsius") ) {
+            return value & "°F = " & round( (v - 32) * 5/9, 2 ) & "°C"
+        }
+        if ( (f == "c" || f == "celsius") && (t == "k" || t == "kelvin") ) {
+            return value & "°C = " & round( v + 273.15, 2 ) & "K"
+        }
+        if ( (f == "k" || f == "kelvin") && (t == "c" || t == "celsius") ) {
+            return value & "K = " & round( v - 273.15, 2 ) & "°C"
+        }
+        if ( (f == "f" || f == "fahrenheit") && (t == "k" || t == "kelvin") ) {
+            return value & "°F = " & round( (v - 32) * 5/9 + 273.15, 2 ) & "K"
+        }
+
+        // Pick the right lookup table
+        var table = {}
+        if ( length.keyExists( f ) ) { table = length }
+        else if ( weight.keyExists( f ) ) { table = weight }
+        else if ( speed.keyExists( f ) ) { table = speed }
+        else if ( data.keyExists( f ) ) { table = data }
+
+        if ( table.isEmpty() || !table.keyExists( f ) || !table.keyExists( t ) ) {
+            return "Cannot convert from '" & fromUnit & "' to '" & toUnit & "'. Check supported units."
+        }
+
+        var baseValue  = v * table[ f ]
+        var converted  = baseValue / table[ t ]
+        return value & " " & fromUnit & " = " & round( converted, 6 ) & " " & toUnit
+    }
+)
+    .describeValue( "The numeric value to convert, e.g. '100'" )
+    .describeFromUnit( "The source unit, e.g. 'km', 'C', 'kg', 'mph'" )
+    .describeToUnit( "The target unit, e.g. 'mi', 'F', 'lb', 'kmh'" )
+
+// ---------------------------------------------------------------------------
+// Tool 3: Timezone / Current Time
+// ---------------------------------------------------------------------------
+timeZone = aiTool(
+    "timeZone",
+    "Get the current date and time in a specific timezone or city.",
+    ( timezone ) => {
+        try {
+            // Map common city names to timezone IDs
+            var cityMap = {
+                "new york": "America/New_York",
+                "los angeles": "America/Los_Angeles",
+                "chicago": "America/Chicago",
+                "london": "Europe/London",
+                "paris": "Europe/Paris",
+                "berlin": "Europe/Berlin",
+                "tokyo": "Asia/Tokyo",
+                "sydney": "Australia/Sydney",
+                "dubai": "Asia/Dubai",
+                "singapore": "Asia/Singapore",
+                "sao paulo": "America/Sao_Paulo",
+                "toronto": "America/Toronto"
+            }
+
+            var tzId = cityMap[ timezone.toLowerCase() ] ?: timezone
+            var cal  = createObject( "java", "java.util.Calendar" ).getInstance(
+                createObject( "java", "java.util.TimeZone" ).getTimeZone( tzId )
+            )
+            var fmt  = createObject( "java", "java.text.SimpleDateFormat" ).init( "EEEE, MMMM d yyyy 'at' h:mm:ss a zzz" )
+            fmt.setTimeZone( cal.getTimeZone() )
+            return "Current time in " & timezone & ": " & fmt.format( cal.getTime() )
+        } catch ( any e ) {
+            return "Could not get time for '" & timezone & "': " & e.message
+        }
+    }
+).describeTimezone( "Timezone ID (e.g. 'America/New_York') or city name (e.g. 'London', 'Tokyo')" )
+
+// ---------------------------------------------------------------------------
+// Tool 4: Live Currency Exchange Rate (exchangerate.host — free, no key)
+// ---------------------------------------------------------------------------
+currencyQuote = aiTool(
+    "currencyQuote",
+    "Get a live currency exchange rate and convert an amount from one currency to another.",
+    ( fromCurrency, toCurrency, amount ) => {
+        try {
+            var from   = fromCurrency.toUpperCase().trim()
+            var to     = toCurrency.toUpperCase().trim()
+            var amt    = val( amount )
+            var url    = "https://api.exchangerate.host/convert?from=#from#&to=#to#&amount=#amt#"
+            var http   = new Http( method="GET", url=url )
+            var result = http.send().getPrefix()
+
+            if ( val( result.status_code ) != 200 ) {
+                return "Exchange rate service unavailable."
+            }
+
+            var data = deserializeJSON( result.fileContent )
+
+            if ( !data.success ?: false ) {
+                return "Could not retrieve rate for " & from & " → " & to
+            }
+
+            var rate      = data.info?.rate ?: 0
+            var converted = data.result ?: 0
+            return "#amt# #from# = #numberFormat( converted, '9,999,999.00' )# #to# (rate: 1 #from# = #rate# #to#)"
+        } catch ( any e ) {
+            return "Currency conversion error: " & e.message
+        }
+    }
+)
+    .describeFromCurrency( "Source currency code, e.g. 'USD'" )
+    .describeToCurrency( "Target currency code, e.g. 'EUR'" )
+    .describeAmount( "Amount to convert, e.g. '100'" )
+
+// ---------------------------------------------------------------------------
+// Tool 5: Current Weather (wttr.in — free, no API key)
+// ---------------------------------------------------------------------------
+weatherNow = aiTool(
+    "weatherNow",
+    "Get the current weather conditions for any city in the world.",
+    ( city ) => {
+        try {
+            var url    = "https://wttr.in/" & encodeForURL( city ) & "?format=j1"
+            var http   = new Http( method="GET", url=url )
+            http.addParam( type="header", name="User-Agent", value="BoxLang-Agent/1.0" )
+            var result = http.send().getPrefix()
+
+            if ( val( result.status_code ) != 200 ) {
+                return "Weather service unavailable for '" & city & "'."
+            }
+
+            var data    = deserializeJSON( result.fileContent )
+            var current = data.current_condition[1]
+            var desc    = current.weatherDesc[1].value
+            var tempC   = current.temp_C
+            var tempF   = current.temp_F
+            var feels   = current.FeelsLikeC
+            var humidity = current.humidity
+            var windKmph = current.windspeedKmph
+
+            return "Weather in " & city & ": " & desc
+                & " | Temp: " & tempC & "°C / " & tempF & "°F"
+                & " | Feels like: " & feels & "°C"
+                & " | Humidity: " & humidity & "%"
+                & " | Wind: " & windKmph & " km/h"
+        } catch ( any e ) {
+            return "Weather lookup failed for '" & city & "': " & e.message
+        }
+    }
+).describeCity( "City name, e.g. 'Miami', 'London', 'Tokyo'" )
+
+// ---------------------------------------------------------------------------
+// Build the agent with all five tools
+// ---------------------------------------------------------------------------
+assistantAgent = aiAgent(
+    name        : "multi-tool-assistant",
+    description : "A versatile assistant with math, conversion, time, currency, and weather tools.",
+    instructions: "You are a helpful assistant with access to real-time tools.
+    For every request:
+    - Use the calculator tool for any math or arithmetic
+    - Use unitConverter for measurement conversions
+    - Use timeZone to answer questions about current time anywhere in the world
+    - Use currencyQuote for exchange rates and currency conversions
+    - Use weatherNow for current weather conditions
+    Chain multiple tools when a question requires more than one.
+    Always show your working and explain the results clearly.",
+    model: aiModel(),
+    tools: [ calculator, unitConverter, timeZone, currencyQuote, weatherNow ]
+)
+
+println( "Agent : " & assistantAgent.getName() )
+println( "Tools : calculator | unitConverter | timeZone | currencyQuote | weatherNow" )
+println( "" )
+
+// Demonstration queries that exercise different tools
+demos = [
+    "What is sqrt(144) + (25 * 3)?",
+    "Convert 26.2 miles to kilometers",
+    "What time is it right now in Tokyo and New York?",
+    "How much is 500 USD in EUR and JPY?",
+    "What's the weather like in Miami right now?"
+]
+
+println( "Running 5 demo queries..." )
+println( "" )
+
+demos.each( ( question, idx ) => {
+    println( "--- Demo " & idx & " ---" )
+    println( "You  : " & question )
+    print( "Agent: " )
+
+    assistantAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        question
+    )
+
+    println( "" )
+    println( "" )
+})
+
+cliRead( "Demos complete. Press Enter to enter interactive mode..." )
+
+// Interactive loop
+println( "" )
+println( "Interactive mode — try multi-part questions like:" )
+println( "  'If it's 30°C in Miami, what is that in Fahrenheit, and what's the current weather there?'" )
+println( "" )
+
+while ( true ) {
+    userInput = cliRead( "You (or 'exit'): " ).trim()
+
+    if ( userInput == "exit" || userInput == "q" ) { break }
+    if ( userInput.isEmpty() ) { continue }
+
+    print( "Agent: " )
+    assistantAgent.stream(
+        ( chunk ) => print( chunk.choices?.first()?.delta?.content ?: "" ),
+        userInput
+    )
+    println( "" )
+    println( "" )
+}
+
+println( "KEY TAKEAWAYS:" )
+println( "  * describeParamName() generates schema so the model knows how to call tools" )
+println( "  * Agents automatically chain tools when one answer feeds the next" )
+println( "  * Free public APIs (wttr.in, DuckDuckGo, exchangerate.host) need zero credentials" )
+println( "  * Error handling inside tools returns readable messages back to the model" )

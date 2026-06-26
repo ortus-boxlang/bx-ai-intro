@@ -1,0 +1,434 @@
+/**
+ * Agent Example 10: Enterprise Orchestrator
+ *
+ * This is the capstone example combining EVERY capability from examples 01-09
+ * into a single production-grade, AI-powered business workflow system.
+ *
+ * What this orchestrator does:
+ *   A customer contacts "Ortus AI Support" with a business inquiry.
+ *   The system automatically routes, researches, and responds — and escalates
+ *   high-value opportunities to a human sales rep for review.
+ *
+ * Capabilities combined:
+ *   Web Search     — researches the customer's company (Perplexity sonar)
+ *   Custom Tools   — CRM lookup, ticket creation, email draft generation
+ *   Sub-Agents     — classifier, researcher, solution designer, proposal writer
+ *   Skills         — finance-analyst and data-science domain knowledge
+ *   RAG            — ChromaDB knowledge base for product/FAQ answers
+ *   Memory         — file memory for cross-session customer history
+ *   Middleware     — logging, guardrails, human approval for high-value deals
+ *   Streaming      — progressive output for responsive UX
+ *
+ * What you'll learn:
+ * - Integrating all bx-ai building blocks into a coherent system
+ * - Request classification and conditional routing
+ * - Human-in-the-loop for business-critical actions
+ * - Building a full agentic workflow from intake to delivery
+ * - Production patterns: error handling, logging, graceful degradation
+ *
+ * Prerequisites:
+ *   docker compose up -d chromadb     (for RAG knowledge base)
+ *   PERPLEXITY_API_KEY=...            (for company research)
+ *   OPENAI_API_KEY=...                (for embeddings + completion)
+ *   OPENROUTER_API_KEY=...            (for orchestration model)
+ *
+ * Run:
+ *   boxlang agents/10-enterprise/agent.bxs
+ */
+
+import bxModules.bxai.models.middleware.core.LoggingMiddleware
+import bxModules.bxai.models.middleware.core.GuardrailMiddleware
+import bxModules.bxai.models.middleware.core.FlightRecorderMiddleware
+import bxModules.bxai.models.middleware.core.HumanInTheLoopMiddleware
+
+println( "==========================================" )
+println( "Agent 10: Enterprise Orchestrator" )
+println( "Ortus AI Support — Full Agentic Workflow" )
+println( "==========================================" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+CHROMA_URL     = systemEnvironment[ "CHROMA_BASE_URL" ] ?: "http://localhost:8000"
+OPENAI_KEY     = systemEnvironment[ "OPENAI_API_KEY" ] ?: ""
+PERPLEXITY_KEY = systemEnvironment[ "PERPLEXITY_API_KEY" ] ?: ""
+dataDir        = expandPath( "./data" )
+
+if ( !directoryExists( dataDir ) ) { directoryCreate( dataDir ) }
+
+// ---------------------------------------------------------------------------
+// SECTION A: TOOLS
+// ---------------------------------------------------------------------------
+
+// Tool: CRM lookup — simulate customer database
+crmLookup = aiTool(
+    "crmLookup",
+    "Look up a customer or company in the CRM by name or email. Returns contact history and account tier.",
+    ( nameOrEmail ) => {
+        // Simulated CRM data
+        var crm = {
+            "acme corp": {
+                accountTier  : "Enterprise",
+                contactName  : "Jane Smith",
+                email        : "jane@acme.com",
+                previousDeals: 3,
+                totalRevenue : 45000,
+                lastContact  : "2025-03-15",
+                notes        : "Interested in BoxLang migration from ColdFusion. POC completed."
+            },
+            "startup.io": {
+                accountTier  : "SMB",
+                contactName  : "Bob Lee",
+                email        : "bob@startup.io",
+                previousDeals: 0,
+                totalRevenue : 0,
+                lastContact  : "2026-01-10",
+                notes        : "New prospect. Evaluating BoxLang for new SaaS project."
+            }
+        }
+
+        var key = nameOrEmail.toLowerCase()
+        for ( var k in crm ) {
+            if ( key.contains( k ) || k.contains( key ) ) {
+                return crm[ k ]
+            }
+        }
+        return { accountTier: "Unknown", notes: "No CRM record found. Treat as new lead." }
+    }
+).describeNameOrEmail( "Company name or email address to look up, e.g. 'Acme Corp' or 'jane@acme.com'" )
+
+// Tool: Create support ticket
+createTicket = aiTool(
+    "createTicket",
+    "Create a support or sales ticket in the CRM. Returns a ticket ID.",
+    ( customerName, subject, priority, description ) => {
+        var ticketId = "TKT-" & dateFormat( now(), "yyyymmdd" ) & "-" & randRange( 1000, 9999 )
+        var ticket = {
+            id         : ticketId,
+            customer   : customerName,
+            subject    : subject,
+            priority   : priority,
+            description: description,
+            createdAt  : now(),
+            status     : "Open"
+        }
+        // In production: save to DB / ticketing system
+        println( "  [CRM] Ticket created: " & ticketId )
+        return "Ticket " & ticketId & " created for " & customerName & " with priority: " & priority
+    }
+)
+    .describeCustomerName( "Full name or company of the customer" )
+    .describeSubject( "Brief subject line for the ticket" )
+    .describePriority( "Ticket priority: Low, Medium, High, or Critical" )
+    .describeDescription( "Detailed description of the issue or request" )
+
+// Tool: Draft proposal email
+draftProposalEmail = aiTool(
+    "draftProposalEmail",
+    "Generate a professional proposal email for a sales opportunity. Returns the email draft.",
+    ( recipientName, companyName, proposedSolution, estimatedValue ) => {
+        return aiChat(
+            "Write a professional, concise sales proposal email.
+            Recipient: #recipientName# at #companyName#
+            Proposed solution: #proposedSolution#
+            Estimated annual value: $#estimatedValue#
+
+            The email should:
+            - Open with a brief reference to their specific need
+            - Clearly state the proposed solution and its business benefits
+            - Mention the investment (use 'starting at $#estimatedValue#/year')
+            - Include a clear next step (discovery call)
+            - Be under 200 words
+            - Be warm but professional in tone
+
+            Sign it: 'Ortus Solutions Enterprise Team'",
+            { max_tokens: 400 }
+        )
+    }
+)
+    .describeRecipientName( "Full name of the email recipient" )
+    .describeCompanyName( "Company name" )
+    .describeProposedSolution( "The solution being proposed, e.g. 'BoxLang enterprise migration with Enterprise Support'" )
+    .describeEstimatedValue( "Annual contract value in USD, e.g. '12000'" )
+
+// Tool: Send for human review (high-value deals)
+sendForReview = aiTool(
+    "sendForReview",
+    "Escalate a high-value opportunity to the sales team for human review before sending.",
+    ( summary, proposalEmail, estimatedValue ) => {
+        println( "" )
+        println( "  ===========================================" )
+        println( "  ESCALATION: Human Review Required" )
+        println( "  Estimated Deal Value: $" & estimatedValue )
+        println( "  ===========================================" )
+        println( "  Summary: " & summary )
+        println( "" )
+        println( "  Proposal Draft:" )
+        println( "  " & proposalEmail )
+        println( "  ===========================================" )
+        println( "" )
+        return "Escalation submitted. Sales team notified. Ticket flagged for human review."
+    }
+)
+    .describeSummary( "Brief summary of the opportunity" )
+    .describeProposalEmail( "The full proposal email draft to review" )
+    .describeEstimatedValue( "Estimated annual contract value in USD" )
+
+// ---------------------------------------------------------------------------
+// SECTION B: SUB-AGENTS
+// ---------------------------------------------------------------------------
+
+// Sub-Agent 1: Request Classifier
+classifierAgent = aiAgent(
+    name        : "request-classifier",
+    description : "Classifies an incoming customer request and determines priority and routing.",
+    instructions: "You classify customer inquiries for Ortus Solutions. Analyse the request and return a JSON object with:
+    {
+      'type': 'support' | 'sales' | 'technical' | 'billing' | 'partnership',
+      'priority': 'Low' | 'Medium' | 'High' | 'Critical',
+      'sentiment': 'positive' | 'neutral' | 'negative' | 'urgent',
+      'estimatedValue': numeric (annual USD, 0 if unknown),
+      'summary': '1-sentence summary of the request'
+    }
+    Return only valid JSON, no explanation."
+)
+
+// Sub-Agent 2: Company Researcher (uses Perplexity)
+companyResearcher = aiAgent(
+    name        : "company-researcher",
+    description : "Researches a company's background, size, tech stack, and potential fit with Ortus products.",
+    instructions: "You research companies for our sales team.
+    When given a company name, research:
+    1. Company size (employees, revenue estimate)
+    2. Industry and primary use cases
+    3. Known technology stack
+    4. Recent news or events relevant to our products
+    5. Fit assessment: how well does Ortus BoxLang/ContentBox solve their needs?
+
+    Be concise — bullet points, 200 words max.",
+    model: aiModel(
+        { model: "sonar" },
+        { provider: "perplexity" }
+    )
+)
+
+// Sub-Agent 3: Solution Designer
+solutionDesigner = aiAgent(
+    name        : "solution-designer",
+    description : "Designs a tailored Ortus Solutions product package for a specific customer need.",
+    instructions: "You design solution packages for Ortus Solutions customers.
+    Given a customer need and company profile:
+    1. Select the most appropriate Ortus products (BoxLang, CommandBox Pro, ContentBox, bx-ai, Support Plan)
+    2. Explain WHY each component solves their specific need
+    3. Provide a phased implementation approach (Phase 1: foundation, Phase 2: migration, Phase 3: optimise)
+    4. Estimate annual investment range ($5K–$50K typical)
+    5. Identify 2-3 key success metrics
+
+    Format as a professional solution brief.",
+    skills: [ aiSkill( expandPath( "/../06-skills/skills/finance-analyst/SKILL.md" ) ) ]
+)
+
+// Sub-Agent 4: Response Writer
+responseWriter = aiAgent(
+    name        : "response-writer",
+    description : "Writes the final customer-facing response email, combining all research and solution design.",
+    instructions: "You write professional customer communication for Ortus Solutions.
+    Given a customer inquiry, CRM data, research, and solution design:
+    1. Open with a personalised acknowledgement of their specific situation
+    2. Briefly reference what you know about their company (shows research)
+    3. Present the tailored solution concisely (3-5 bullet points)
+    4. Explain the business value and ROI
+    5. Propose a clear next step (15-minute discovery call)
+    6. Keep the total length under 250 words
+    7. Tone: expert, warm, consultative — never pushy
+
+    Sign as: 'The Ortus Solutions Team'"
+)
+
+// ---------------------------------------------------------------------------
+// SECTION C: SKILLS
+// ---------------------------------------------------------------------------
+localSkillsPath = expandPath( "/../06-skills/skills" )
+financeSkill    = aiSkill( localSkillsPath & "/finance-analyst/SKILL.md" )
+
+// ---------------------------------------------------------------------------
+// SECTION D: MEMORY (per-customer session)
+// ---------------------------------------------------------------------------
+customerId     = "enterprise-demo-customer"
+sessionMemory  = aiMemory(
+    memory        : "file",
+    userId        : customerId,
+    conversationId: "enterprise-support",
+    config        : { directoryPath: dataDir }
+)
+
+// ---------------------------------------------------------------------------
+// SECTION E: MIDDLEWARE STACK
+// ---------------------------------------------------------------------------
+loggingMW = new LoggingMiddleware(
+    logToConsole: true,
+    logToFile   : true,
+    logLevel    : "info",
+    prefix      : "[Enterprise Orchestrator]"
+)
+
+guardrailMW = new GuardrailMiddleware(
+    blockedTools: [],
+    argPatterns : {
+        // Block emails being sent to non-business domains
+        "draftProposalEmail": [
+            { "recipientName": "(?i)test|dummy|fake" }
+        ]
+    }
+)
+
+flightRecorder = new FlightRecorderMiddleware(
+    mode       : "record",
+    fixturePath: dataDir & "/enterprise-flight-recorder.json"
+)
+
+// HumanInTheLoop: require approval before sending high-value proposals
+humanApproval = new HumanInTheLoopMiddleware(
+    toolsRequiringApproval: [ "sendForReview", "draftProposalEmail" ],
+    mode                  : "cli"
+)
+
+// ---------------------------------------------------------------------------
+// SECTION F: ENTERPRISE ORCHESTRATOR AGENT
+// ---------------------------------------------------------------------------
+enterpriseOrchestrator = aiAgent(
+    name        : "enterprise-orchestrator",
+    description : "Full-cycle AI orchestrator for Ortus Solutions enterprise sales and support.",
+    instructions: "You are the Ortus Solutions Enterprise AI Orchestrator.
+    When a customer inquiry arrives, execute this workflow in order:
+
+    STEP 1 — CLASSIFY: Call request-classifier to categorise the request, priority, and estimated value.
+
+    STEP 2 — CRM: Call crmLookup with the customer's name or email to retrieve account history.
+
+    STEP 3 — RESEARCH: Call company-researcher to gather background on the company (use customer name).
+
+    STEP 4 — DESIGN SOLUTION: Call solution-designer with the customer's need + CRM + research to create a tailored package.
+
+    STEP 5 — RESPOND:
+        a) If priority is High or Critical OR estimatedValue > 5000:
+           - Call draftProposalEmail to write a professional proposal
+           - Call sendForReview to escalate to human sales team
+           - Create a ticket with createTicket (priority: High)
+        b) Otherwise:
+           - Call response-writer to compose the customer response
+           - Create a ticket with createTicket (priority matching classification)
+
+    STEP 6 — SUMMARY: Deliver a brief internal summary of: classification result, CRM tier, proposed solution, and action taken.
+
+    Always complete ALL steps. Never skip the CRM lookup or classification.",
+    model      : aiModel(),
+    subAgents  : [ classifierAgent, companyResearcher, solutionDesigner, responseWriter ],
+    tools      : [ crmLookup, createTicket, draftProposalEmail, sendForReview ],
+    skills     : [ financeSkill ],
+    memory     : [ sessionMemory ],
+    middleware : [ loggingMW, guardrailMW, flightRecorder, humanApproval ]
+)
+
+println( "Enterprise Orchestrator ready." )
+println( "" )
+println( "Pipeline:" )
+println( "  classify → CRM lookup → company research → solution design → respond/escalate" )
+println( "" )
+println( "Sub-agents  : classifier | researcher | solution designer | response writer" )
+println( "Tools       : crmLookup | createTicket | draftProposalEmail | sendForReview" )
+println( "Skills      : finance-analyst" )
+println( "Memory      : FileMemory (persistent customer history)" )
+println( "Middleware  : Logging | Guardrails | FlightRecorder | Human Approval" )
+println( "" )
+
+// ---------------------------------------------------------------------------
+// Demo: Process realistic customer inquiries
+// ---------------------------------------------------------------------------
+demoInquiries = [
+    {
+        customer: "Jane Smith at Acme Corp",
+        message : "Hi, we're a mid-size software company running ColdFusion 2021. Our IT team says we need to migrate off Adobe CF. We have about 15 CFML apps. We're interested in BoxLang but need to understand the cost and support commitment. Can you help?"
+    },
+    {
+        customer: "Bob Lee at Startup.io",
+        message : "We're building a new AI-powered SaaS. BoxLang looks interesting. Is there a free tier? What's the quickest way to get started with bx-ai and agents?"
+    }
+]
+
+println( "Running " & demoInquiries.len() & " demo inquiries through the full pipeline..." )
+println( "" )
+
+demoInquiries.each( ( inquiry, idx ) => {
+    println( "=" & repeatString( "=", 60 ) )
+    println( "INQUIRY " & idx & " FROM: " & inquiry.customer )
+    println( "=" & repeatString( "=", 60 ) )
+    println( "Message: " & inquiry.message )
+    println( "" )
+    println( "Processing through enterprise pipeline..." )
+    println( "" )
+
+    stepCount  = 0
+    lastTool   = ""
+
+    print( "Orchestrator: " )
+
+    enterpriseOrchestrator.stream(
+        ( chunk ) => {
+            var content   = chunk.choices?.first()?.delta?.content ?: ""
+            var toolCalls = chunk.choices?.first()?.delta?.tool_calls ?: []
+
+            if ( toolCalls.len() ) {
+                var toolName = toolCalls.first().function?.name ?: "tool"
+                if ( toolName != lastTool ) {
+                    stepCount++
+                    print( chr(10) & "  [Step " & stepCount & ": " & toolName & "] " )
+                    lastTool = toolName
+                }
+            }
+
+            print( content )
+        },
+        "New inquiry from #inquiry.customer#: #inquiry.message#"
+    )
+
+    println( "" )
+    println( "" )
+
+    if ( idx < demoInquiries.len() ) {
+        cliRead( "Press Enter for the next inquiry..." )
+        println( "" )
+    }
+})
+
+// ---------------------------------------------------------------------------
+// Post-run: show execution metrics
+// ---------------------------------------------------------------------------
+println( "=" & repeatString( "=", 60 ) )
+println( "EXECUTION SUMMARY" )
+println( "=" & repeatString( "=", 60 ) )
+
+memMessages = sessionMemory.getAll()
+println( "Customer memory messages  : " & memMessages.len() )
+
+tape = flightRecorder.getTape()
+println( "FlightRecorder interactions: " & tape.interactions.len() )
+println( "Flight recorder saved to  : " & dataDir & "/enterprise-flight-recorder.json" )
+
+config = enterpriseOrchestrator.getConfig()
+println( "Agent sub-agents          : " & config.subAgents.len() )
+println( "Agent tools               : " & config.tools.len() )
+println( "Middleware layers         : " & enterpriseOrchestrator.listMiddleware().len() )
+println( "" )
+
+println( "KEY TAKEAWAYS:" )
+println( "  * All 9 previous capabilities work together seamlessly" )
+println( "  * Sub-agents + tools = full separation of concerns" )
+println( "  * HumanInTheLoop pauses the pipeline for high-stakes actions" )
+println( "  * GuardrailMiddleware blocks harmful patterns before execution" )
+println( "  * FlightRecorder captures a replayable trace for debugging" )
+println( "  * FileMemory gives the agent customer context across sessions" )
+println( "  * Skills inject domain knowledge without bloating instructions" )
+println( "" )
+println( "This is what production AI agents look like with bx-ai!" )

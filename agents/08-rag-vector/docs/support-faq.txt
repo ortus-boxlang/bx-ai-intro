@@ -1,0 +1,82 @@
+ORTUS SOLUTIONS SUPPORT FAQ
+============================
+
+GENERAL QUESTIONS
+
+Q: What is the difference between BoxLang and ColdFusion?
+A: BoxLang is an open-source, modernised evolution of CFML (the language ColdFusion runs). BoxLang is 40-60% faster, has a completely new architecture, supports modern language features (lambdas, closures, null-safe operators), runs on any JVM 21+ environment, and is free to use. ColdFusion is Adobe's proprietary product with a commercial license. Existing CFML code runs on BoxLang with minimal changes via the bx-compat-cfml module.
+
+Q: Is BoxLang production-ready?
+A: Yes. BoxLang reached its 1.0 stable release in 2024 and is used in production by hundreds of organisations worldwide. The core runtime, standard library, and major modules (bx-ai, bx-http, bx-orm) are stable. We recommend using the latest stable LTS release for new production deployments.
+
+Q: What LTS versions are currently supported?
+A: BoxLang 1.x LTS: supported until December 2026, receiving security patches.
+BoxLang 2.x (current): full feature support, recommended for new projects.
+
+Q: How do I migrate an existing ColdFusion application to BoxLang?
+A: Install the bx-compat-cfml module, which provides compatibility for most CFML tags and functions. Most applications migrate with zero code changes. For applications using cfcomponent, cffunction, and cfargument tags, BoxLang's native component syntax (BX classes) is more idiomatic. The migration guide is at: https://boxlang.ortusbooks.com/migration
+
+---
+
+LICENSING QUESTIONS
+
+Q: Is BoxLang really free?
+A: Yes. The BoxLang runtime and most modules are Apache 2.0 licensed — free for commercial use, modification, and distribution. Commercial products (CommandBox Pro, ContentBox Enterprise, Enterprise Support plans) have separate commercial licenses.
+
+Q: Can I use BoxLang in a SaaS product?
+A: Yes. The Apache 2.0 license allows use in commercial SaaS products without royalties. You do not need to open-source your application. You only need to include the BoxLang license notice.
+
+Q: What is included in the Enterprise Support plan?
+A: The Enterprise Support plan ($1,999/month) includes: a dedicated support engineer, 2-hour response SLA, unlimited technical consulting calls, code reviews (2 per month), on-site training (2 days per year), priority bug fixes, early access to new features, and a private Slack channel with the core BoxLang team.
+
+---
+
+TECHNICAL QUESTIONS
+
+Q: Does BoxLang support async/concurrent programming?
+A: Yes. BoxLang has built-in async support via runAsync(), Future objects, and the parallel() function for parallel array/list operations. The scheduler module provides cron-like task scheduling. For reactive streams, the bx-reactor module provides full reactive programming support.
+
+Q: How do I connect BoxLang to a database?
+A: Use the bx-datasource module to configure data sources, then use queryExecute() for SQL queries or the bx-orm module for object-relational mapping. BoxLang supports all major databases: MySQL, PostgreSQL, Microsoft SQL Server, Oracle, SQLite, and any JDBC-compatible database.
+
+Q: What is the recommended way to build REST APIs with BoxLang?
+A: Use ColdBox MVC framework with its built-in REST capabilities. Define routes in config/Router.bx, create handler components in handlers/, and return restful responses with event.getResponse(). ColdBox supports JSON, XML, and MessagePack out of the box.
+
+Q: Does bx-ai support streaming AI responses?
+A: Yes. Use aiChatStream( prompt, callback ) or agent.stream( callback, input ) for streaming. The callback receives each token chunk as it arrives. This is the recommended approach for user-facing applications to avoid perceived latency.
+
+Q: Can I run AI models locally without API keys?
+A: Yes. Install Ollama (docker compose up ollama) and pull a model (docker exec bxai-ollama ollama pull llama3.2). Then configure bx-ai to use the ollama provider:
+   aiModel({ model: "llama3.2" }, { provider: "ollama" })
+   The default Ollama endpoint is http://localhost:11434. No API key required.
+
+Q: How do I upgrade bx-ai to the latest version?
+A: Run: box update bx-ai
+   Or update your box.json dependencies and run: box install
+
+---
+
+BILLING AND ACCOUNT QUESTIONS
+
+Q: How do I upgrade from Community to Enterprise support?
+A: Email sales@ortussolutions.com or visit the customer portal at https://account.ortussolutions.com. Upgrades are prorated for the remaining billing period.
+
+Q: Is there a free trial for Enterprise support?
+A: Yes. We offer a 30-day free trial for Enterprise support. Contact sales@ortussolutions.com with your company name and use case.
+
+Q: Can I cancel my support plan anytime?
+A: Monthly plans can be cancelled anytime effective the next billing date. Annual plans can be cancelled with a 30-day notice; unused months are refunded at 80% of the monthly rate.
+
+Q: What payment methods are accepted?
+A: We accept major credit cards (Visa, Mastercard, Amex), ACH/bank transfer (US accounts), and wire transfer for invoiced enterprise agreements.
+
+---
+
+CONTACT INFORMATION
+
+Technical Support: support@ortussolutions.com
+Sales Inquiries: sales@ortussolutions.com
+Community Forum: https://community.ortussolutions.com
+Documentation: https://boxlang.ortusbooks.com
+GitHub: https://github.com/ortus-boxlang
+Slack: https://boxteam.ortussolutions.com

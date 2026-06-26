@@ -1,0 +1,157 @@
+BX-AI MODULE GUIDE
+==================
+
+The bx-ai module is BoxLang's official AI integration layer. It provides a clean, provider-agnostic API for building AI-powered applications. All AI capabilities — chat, agents, tools, memory, pipelines, speech — are exposed as BoxLang BIFs (Built-in Functions).
+
+SUPPORTED PROVIDERS
+bx-ai supports all major AI providers through a unified interface:
+- OpenAI (GPT-4o, GPT-4o-mini, o1, o3)
+- Anthropic Claude (claude-3-5-sonnet, claude-opus-4)
+- Google Gemini (gemini-2.5-pro, gemini-2.0-flash)
+- OpenRouter (50+ models via single API key)
+- Perplexity (sonar, sonar-pro — with live web search)
+- Groq (llama3, mixtral — ultra-fast inference)
+- Mistral (mistral-large, codestral)
+- DeepSeek (deepseek-r1 — reasoning model)
+- Ollama (local models: llama3.2, gemma2, phi4)
+- AWS Bedrock (Titan, Llama via AWS)
+- HuggingFace (open-source models)
+
+CORE BIFS
+---------
+
+aiChat( prompt, params, options )
+  The simplest way to call an AI. Returns a string by default.
+  params:  { model, temperature, max_tokens, ... }
+  options: { provider, returnFormat, logRequestToConsole, ... }
+
+aiChatStream( prompt, callback, params, options )
+  Stream tokens as they arrive. callback receives each chunk.
+  chunk.choices.first().delta.content  → token text
+  chunk.choices.first().delta.reasoning → reasoning tokens
+
+aiMessage()
+  Builder for structured conversations with roles.
+  .system("You are a helpful assistant")
+  .user("What is BoxLang?")
+  .assistant("BoxLang is...")
+  .image(url) .embedImage(path) .pdf(url) .embedPdf(path)
+  .mergeContext(data)  // injects a struct into all prompts
+  .bind(vars)          // template variable substitution
+
+aiModel( params, options )
+  Creates a reusable model reference for agents and pipelines.
+  aiModel()                           // uses config defaults
+  aiModel({ model: "gpt-4o" }, { provider: "openai" })
+  aiModel({ model: "sonar" }, { provider: "perplexity" })
+
+aiTool( name, description, callback )
+  Creates a function tool the AI can call.
+  .describeParamName("description")  // generates JSON schema for each param
+
+aiAgent( name, description, instructions, model, tools, subAgents, skills, availableSkills, memory, middleware, checkpointer )
+  Creates an autonomous AI agent.
+  agent.run( userInput )              // synchronous
+  agent.stream( callback, userInput ) // streaming
+  agent.getMemoryMessages()
+  agent.clearMemory()
+  agent.getConfig()
+
+aiMemory( memory, userId, conversationId, config )
+  Memory providers: "window" (last N messages), "summary" (compressed),
+  "file" (persisted to disk), "cache" (Redis-backed)
+  memory.getAll() .getRecent(n) .search(term) .export() .clear()
+
+aiSkill( pathOrContent )
+  Loads reusable domain knowledge from a .md file or inline string.
+  Pass a directory path to auto-discover all SKILL.md files.
+
+PIPELINES
+---------
+Pipelines chain AI operations fluently:
+  result = aiMessage("Extract product from: #text#")
+      .system("You extract product data from text")
+      .toDefaultModel()
+      .asJSON()
+      .structuredOutput( new Product() )
+      .transform( (r) => r.title.toUpperCase() )
+      .run()
+
+Pipeline methods:
+  .toDefaultModel()     use configured default model
+  .toModel( name )      use a specific model ID
+  .asJSON()             force JSON output
+  .asMarkdown()         force Markdown output
+  .structuredOutput(obj)  parse response into a typed object
+  .transform( fn )      apply a custom transformation
+  .pipe( nextMessage )  chain to another model
+  .stream( callback )   stream the final output
+  .run()                execute synchronously
+
+AGENT MEMORY SYSTEMS
+--------------------
+WindowMemory (default):
+  Keeps the last N messages. Simple, no persistence.
+  aiMemory("window", config: { windowSize: 10 })
+
+SummaryMemory:
+  Auto-summarises old turns to stay within context limits.
+  aiMemory("summary", config: { summaryThreshold: 8 })
+
+FileMemory:
+  Persists every message as JSON to disk. Survives restarts.
+  aiMemory("file", config: { directoryPath: "/data/memory" })
+
+CacheMemory:
+  Redis-backed. Ideal for multi-process or distributed agents.
+  aiMemory("cache", config: { host: "localhost", port: 6379 })
+
+MIDDLEWARE
+----------
+Middleware intercepts agent lifecycle without changing core logic:
+  LoggingMiddleware        — console/file logging
+  FlightRecorderMiddleware — captures replayable execution trace
+  GuardrailMiddleware      — blocks risky tool calls
+  HumanInTheLoopMiddleware — pauses for human approval
+
+Usage:
+  import bxModules.bxai.models.middleware.core.LoggingMiddleware
+  agent = aiAgent(
+      ...
+      middleware: [ new LoggingMiddleware( logToConsole: true ) ]
+  )
+
+SPEECH APIs
+-----------
+aiSpeak( text, params, options )  — text-to-speech
+  params: { model: "tts-1-hd", voice: "nova", response_format: "mp3" }
+
+aiTranscribe( audio, params )     — speech-to-text (Whisper)
+  audio can be: file path, URL, or binary data
+
+aiTranslate( audio, params )      — audio translation to English
+
+CONFIGURATION (config/boxlang.json)
+------------------------------------
+{
+  "modules": {
+    "bxai": {
+      "settings": {
+        "provider": "openrouter",
+        "defaultParams": { "model": "openrouter/auto" },
+        "skillsDirectory": "/.agents/skills",
+        "autoLoadSkills": true
+      }
+    }
+  }
+}
+
+ENVIRONMENT VARIABLES (.env)
+-----------------------------
+OPENAI_API_KEY=sk-...
+CLAUDE_API_KEY=sk-ant-...
+OPENROUTER_API_KEY=sk-or-...
+PERPLEXITY_API_KEY=pplx-...
+GEMINI_API_KEY=...
+GROQ_API_KEY=...
+VOYAGE_API_KEY=...  (for embeddings)
