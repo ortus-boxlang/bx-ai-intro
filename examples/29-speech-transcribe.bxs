@@ -87,6 +87,28 @@ println( "Round-trip: #roundTrip#" )
 println( "" )
 
 // ============================================================================
+// Example 5: Fluent Builder API — aiTranscribe() called with no arguments
+// ============================================================================
+println( "--- Example 5: Fluent Builder API ---" )
+println( "" )
+
+// Calling aiTranscribe() with NO arguments returns an AiTranscriptionRequest
+// builder. Chain configuration, then terminate with .transcribe().
+fluentTranscript = aiTranscribe()
+    .file( audioFile )
+    .withWordTimestamps()
+    .asVerboseJSON()
+    .transcribe()
+
+println( "Fluent builder transcription (verbose JSON):" )
+println( fluentTranscript )
+println( "" )
+
+// This same AiTranscriptionRequest class is shared with aiTranslate() — see
+// examples/30 — only the terminator method differs (.transcribe() vs .translate()).
+println( "" )
+
+// ============================================================================
 // Key Takeaways
 // ============================================================================
 println( "========================================" )
@@ -99,4 +121,7 @@ println( "4. Switch providers with options.provider (e.g. 'groq' for Whisper)" )
 println( "5. options.returnFormat defaults to 'text'; use 'response' for rich objects" )
 println( "6. You can pipe aiSpeak() binary output directly into aiTranscribe()" )
 println( "7. Use params.inputFormat when passing binary data in a non-default format" )
+println( "8. aiTranscribe() called with no arguments returns a fluent" )
+println( "   AiTranscriptionRequest builder — chain .file()/.withWordTimestamps()/" )
+println( "   .asVerboseJSON().transcribe()" )
 println( "" )

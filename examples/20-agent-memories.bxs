@@ -134,3 +134,58 @@ paymentMessages.each( ( msg ) => {
 })
 println( "" )
 println( "✓ Example complete! Memory data persisted to: #dataDir#" )
+
+// ============================================================================
+// NEW: Token-Based Summarization Trigger & Universal summarize()
+// ============================================================================
+println( "" )
+println( "=== Token-Based Trigger & Universal summarize() ===" )
+println( "" )
+
+// maxTokens is an alternative trigger to summaryThreshold/maxMessages — compress
+// when the ESTIMATED TOKEN COUNT reaches this, not a raw message count. Handy
+// when messages vary wildly in length. maxTokens and maxMessages are mutually
+// exclusive — set maxMessages: 0 when using maxTokens.
+tokenTriggeredMemory = aiMemory(
+	memory: "summary",
+	userId: userId,
+	conversationId: "token-trigger-demo",
+	config: {
+		maxMessages: 0,       // disabled — maxTokens drives compression instead
+		maxTokens: 500,       // compress once estimated tokens reach this
+		summaryProvider: "openrouter",
+		summaryModel: "openrouter/auto"
+	}
+)
+
+tokenTriggeredMemory.add( { role: "user", content: "Tell me about your return policy in detail." } )
+tokenTriggeredMemory.add( { role: "assistant", content: "Our return policy allows returns within 30 days of purchase, with a valid receipt, for items in original condition." } )
+
+println( "Estimated size so far: #tokenTriggeredMemory.sizeInTokens()# tokens (trigger at 500)" )
+println( "" )
+
+// summarize() is universal — every memory type has it, not just SummaryMemory.
+// Calling it directly forces an on-demand compression regardless of trigger state.
+// fileMemory was built above with no summary provider/model of its own (it's a
+// plain persistence memory), so pass them per-call — same as keepRecent, any
+// summarize() option can be overridden for a single call without reconfiguring
+// the memory instance itself.
+println( "Calling summarize() directly on fileMemory (works on any memory type):" )
+fileMemory.summarize( { keepRecent: 2, provider: "mock", model: "mock-model" } )
+println( "  fileMemory.summarize() completed without error" )
+println( "" )
+
+// onAIMemorySummarize fires on EVERY memory type after a summarize() completes —
+// whether triggered automatically or called directly, as above.
+BoxRegisterInterceptor(
+	function( data ) {
+		println( "  [EVENT] onAIMemorySummarize fired" )
+		println( "  [EVENT]   type: #data.type#  summarizedCount: #data.summarizedCount ?: 0#" )
+	},
+	"onAIMemorySummarize"
+)
+
+println( "Triggering summarize() again to observe the event:" )
+fileMemory.add( { role: "user", content: "One more question to guarantee there's something new to summarize." } )
+fileMemory.summarize( { keepRecent: 2, provider: "mock", model: "mock-model" } )
+println( "" )

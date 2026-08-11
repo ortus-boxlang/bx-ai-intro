@@ -1,0 +1,138 @@
+/**
+* Example 31: Image Generation
+*
+* aiImage() generates images from text prompts using any provider that implements
+* IAiImageService — OpenAI (DALL-E / gpt-image-1), Gemini (Imagen 3), Grok (Aurora),
+* and OpenRouter (FLUX and others).
+*
+* Call it directly with a prompt for immediate execution, or call it with NO
+* arguments to get a fluent AiImageRequest builder back — same pattern as
+* aiSpeak()/aiTranscribe()/aiTranslate().
+*
+* Prerequisites:
+*   OPENAI_API_KEY=<your key>  in .env  (for the default provider)
+*   GEMINI_API_KEY=<your key>  in .env  (optional, for the Gemini section)
+*
+* Run:
+*   boxlang examples/31-image-generation.bxs
+*/
+println( "========================================" )
+println( "Example 31: Image Generation" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Basic Generation — Direct Call
+// ============================================================================
+println( "--- Example 1: Basic Generation ---" )
+println( "" )
+
+response = aiImage( "a majestic red fox sitting in an autumn forest at golden hour" )
+
+println( "Provider      : " & response.getProvider() )
+println( "Model         : " & response.getModel() )
+println( "Image count   : " & response.getCount() )
+println( "Has images    : " & response.hasImages() )
+println( "Revised prompt: " & left( response.getRevisedPrompt(), 80 ) )
+println( "" )
+
+// ============================================================================
+// Example 2: Save Directly to a File
+// ============================================================================
+println( "--- Example 2: Save Directly to File ---" )
+println( "" )
+
+savedPath = aiImage(
+    prompt : "a serene mountain lake reflecting snow-capped peaks",
+    options: { outputFile: expandPath( "./examples/assets/generated-lake.png" ) }
+)
+
+println( "Saved to    : " & savedPath )
+println( "File exists : " & fileExists( savedPath ) )
+println( "" )
+
+// ============================================================================
+// Example 3: HD Quality, Widescreen, Vivid Style
+// ============================================================================
+println( "--- Example 3: HD Quality & Style Controls ---" )
+println( "" )
+
+hdResponse = aiImage(
+    prompt : "a futuristic cyberpunk cityscape at night with neon lights and flying cars",
+    params : {
+        quality: "hd",
+        style  : "vivid",
+        size   : "1792x1024"
+    },
+    options: { provider: "openai" }
+)
+
+hdResponse.saveToFile( expandPath( "./examples/assets/generated-cyberpunk.png" ) )
+println( "Saved HD widescreen image to examples/assets/generated-cyberpunk.png" )
+println( "" )
+
+// ============================================================================
+// Example 4: Fluent Builder API
+// ============================================================================
+println( "--- Example 4: Fluent Builder API ---" )
+println( "" )
+
+// Call aiImage() with NO prompt to get a builder back, then chain and .generate()
+fluentResponse = aiImage()
+    .prompt( "a neon-lit rainy street in a cyberpunk city" )
+    .provider( "openai" )
+    .size( "1024x1024" )
+    .style( "vivid" )
+    .generate()
+
+println( "Provider   : " & fluentResponse.getProvider() )
+println( "Has images : " & fluentResponse.hasImages() )
+println( "" )
+
+// ============================================================================
+// Example 5: Gemini Imagen 3 (optional — requires GEMINI_API_KEY)
+// ============================================================================
+println( "--- Example 5: Gemini Imagen 3 ---" )
+println( "" )
+
+try {
+    geminiResponse = aiImage(
+        prompt : "a watercolor painting of a Japanese garden with cherry blossoms",
+        options: { provider: "gemini" }
+    )
+    println( "Provider   : " & geminiResponse.getProvider() )
+    println( "Has images : " & geminiResponse.hasImages() )
+} catch ( any e ) {
+    println( "Skipped (needs GEMINI_API_KEY): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 6: generateImage@bxai — as an Agent Tool
+// ============================================================================
+println( "--- Example 6: generateImage@bxai Agent Tool ---" )
+println( "" )
+
+// generateImage@bxai is auto-registered — just opt an agent into it
+imageAgent = aiAgent(
+    name        : "image-assistant",
+    instructions: "You generate images when asked and describe what you created.",
+    tools       : [ "generateImage@bxai" ]
+)
+
+agentAnswer = imageAgent.run( "Generate an image of a friendly robot waving hello, then tell me what you created." )
+println( "Agent: " & left( agentAnswer, 200 ) )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiImage( prompt, params, options ) generates images from text" )
+println( "2. Pass options.outputFile to save directly and get a file path back" )
+println( "3. aiImage() with NO prompt returns a fluent AiImageRequest builder" )
+println( "4. Works across OpenAI, Gemini, Grok, and OpenRouter — swap options.provider" )
+println( "5. generateImage@bxai lets agents generate images autonomously" )
+println( "" )

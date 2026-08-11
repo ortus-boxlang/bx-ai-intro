@@ -71,6 +71,49 @@
 				"defaultSpeechModel"        : "",
 				"defaultTranscriptionModel" : ""
 			}
+
+			// --------------------------------------------------------------------------
+			// Security Settings — Prompt-injection guardrails (see examples/34-security-guardrails.bxs)
+			// --------------------------------------------------------------------------
+			// Uncomment to auto-attach InputSanitizerMiddleware/fencing to EVERY chat
+			// request (aiChat, aiModel, aiAgent) instead of attaching middleware per-request.
+			// "security" : {
+			// 	"enabled" : false,
+			// 	"input" : {
+			// 		"enabled" : true,
+			// 		"action" : "flag",
+			// 		"detectors" : [],
+			// 		"customPatterns" : [],
+			// 		"normalizeUnicode" : true,
+			// 		"stripZeroWidth" : true,
+			// 		"scanToolResults" : true
+			// 	},
+			// 	"fencing" : {
+			// 		"enabled" : true,
+			// 		"fenceContext" : true,
+			// 		"escapeBindings" : true,
+			// 		"preamble" : ""
+			// 	}
+			// },
+
+			// --------------------------------------------------------------------------
+			// Gateway Settings — per-gateway configuration for aiGateway( name ) (see examples/35-gateways.bxs)
+			// --------------------------------------------------------------------------
+			// The name of the key is the gateway name; each gateway has its own options.
+			// Ex: { "slack": { "botToken": "...", "signingSecret": "..." } }
+			// "gateways" : {
+			// },
+
+			// --------------------------------------------------------------------------
+			// HITL Settings — default decision store for approve_always/approve_session
+			// durable grants (see examples/36-hitl-batching-and-grants.bxs)
+			// --------------------------------------------------------------------------
+			// "hitl" : {
+			// 	"decisionStore" : {
+			// 		"provider" : "cache",
+			// 		"config" : {}
+			// 	}
+			// }
         }
     }
 }
