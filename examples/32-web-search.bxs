@@ -1,0 +1,106 @@
+/**
+* Example 32: Web Search — aiWebSearch() BIF & webSearch@bxai Tool
+*
+* aiWebSearch() is bx-ai's own provider-agnostic search BIF — a different pattern
+* from agents/01-web-search, which relies on Perplexity's search-native model.
+* Use aiWebSearch() when you want explicit control over the search provider and
+* results, independent of which chat model you're using.
+*
+* What you'll learn:
+* - Calling aiWebSearch() directly for provider-agnostic search
+* - The non-blocking aiWebSearchAsync() variant (returns a BoxFuture)
+* - Letting an agent search the web on its own via the webSearch@bxai tool
+*
+* Prerequisites:
+*   One of: BRAVE_API_KEY, TAVILY_API_KEY, GOOGLE_API_KEY (+ GOOGLE_SEARCH_ENGINE_ID)
+*   The default "http" provider needs no API key — it's a direct URL fetcher.
+*
+* Run:
+*   boxlang examples/32-web-search.bxs
+*/
+println( "========================================" )
+println( "Example 32: Web Search (aiWebSearch)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Direct URL Fetch — Default "http" Provider (no API key needed)
+// ============================================================================
+println( "--- Example 1: Default HTTP Provider ---" )
+println( "" )
+
+results = aiWebSearch( "https://en.wikipedia.org/wiki/BoxLang" )
+println( "Results found: " & results.len() )
+results.each( ( r ) => {
+    println( "  - " & r.title )
+    println( "    " & r.url )
+} )
+println( "" )
+
+// ============================================================================
+// Example 2: A Real Search Provider (optional — needs an API key)
+// ============================================================================
+println( "--- Example 2: Search Provider ---" )
+println( "" )
+
+try {
+    braveResults = aiWebSearch(
+        "BoxLang programming language",
+        { provider: "brave", maxResults: 5 }
+    )
+    println( "Found " & braveResults.len() & " result(s) via Brave:" )
+    braveResults.each( ( r ) => println( "  - " & r.title & " (" & r.domain & ")" ) )
+} catch ( any e ) {
+    println( "Skipped (needs BRAVE_API_KEY): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 3: Async Search — aiWebSearchAsync()
+// ============================================================================
+println( "--- Example 3: Async Search ---" )
+println( "" )
+
+future = aiWebSearchAsync( "https://boxlang.io" )
+println( "Search dispatched — doing other work while it runs..." )
+asyncResults = future.get()
+println( "Async search returned " & asyncResults.len() & " result(s)" )
+println( "" )
+
+// ============================================================================
+// Example 4: webSearch@bxai — as an Agent Tool
+// ============================================================================
+println( "--- Example 4: webSearch@bxai Agent Tool ---" )
+println( "" )
+
+// webSearch@bxai is auto-registered at module startup. aiAgent()'s tools: array
+// expects already-built Tool instances (not raw registry-key strings), so
+// resolve it through the registry first with resolveTools().
+webSearchTools = aiToolRegistry().resolveTools( [ "webSearch@bxai" ] )
+
+researchAgent = aiAgent(
+    name        : "research-assistant",
+    instructions: "Use web search for current, verifiable information. Cite URLs you find.",
+    tools       : webSearchTools
+)
+
+answer = researchAgent.run( "Search the web and tell me what BoxLang is, citing a source URL." )
+println( "Agent: " & left( answer, 300 ) )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiWebSearch( query, options ) is a provider-agnostic search BIF" )
+println( "2. The default 'http' provider needs no API key — direct URL fetch" )
+println( "3. Swap options.provider for brave/google/tavily/exa result normalization" )
+println( "4. aiWebSearchAsync() returns a BoxFuture for non-blocking search" )
+println( "5. webSearch@bxai lets any agent search the web autonomously" )
+println( "6. Contrast with agents/01-web-search: that uses a search-native MODEL" )
+println( "   (Perplexity sonar); this example uses the module's own search BIF/tool" )
+println( "   — pick whichever fits: model-native search needs zero extra plumbing," )
+println( "   the BIF/tool approach works with ANY chat model." )
+println( "" )

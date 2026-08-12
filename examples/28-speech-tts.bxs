@@ -115,6 +115,33 @@ println( "Calm narrator audio saved to: #calmFile#" )
 println( "" )
 
 // ============================================================================
+// Example 5: Fluent Builder API — aiSpeak() called with no arguments
+// ============================================================================
+println( "--- Example 5: Fluent Builder API ---" )
+println( "" )
+
+// Calling aiSpeak() with NO arguments returns an AiSpeechRequest builder instead
+// of making the call immediately. Chain configuration, then terminate with .speak().
+fluentFile = expandPath( "./data/fluent-builder.mp3" )
+
+aiSpeak()
+    .text( "This audio was generated with the fluent builder API." )
+    .voice( "shimmer" )
+    .model( "tts-1-hd" )
+    .asMP3()
+    .outputFile( fluentFile )
+    .speak()
+
+println( "Fluent builder audio saved to: #fluentFile#" )
+println( "" )
+
+// The builder also has shortcuts like .male()/.female() for voice gender and
+// .withOptions()/.withLogging() for request-level configuration.
+println( "Note: the traditional aiSpeak( text, params, options ) call above and this" )
+println( "fluent chain reach the same provider — pick whichever reads better inline." )
+println( "" )
+
+// ============================================================================
 // Key Takeaways
 // ============================================================================
 println( "========================================" )
@@ -128,4 +155,6 @@ println( "5. Without outputFile, aiSpeak() returns an AiSpeechResponse object" )
 println( "6. Call response.saveToFile( path ) to persist the binary audio data" )
 println( "7. options.instructions (or params.instructions) controls voice style/tone" )
 println( "8. Instructions require a compatible model such as gpt-4o-mini-tts" )
+println( "9. aiSpeak() called with no arguments returns a fluent AiSpeechRequest" )
+println( "   builder — chain .text()/.voice()/.model()/.asMP3()/.outputFile().speak()" )
 println( "" )

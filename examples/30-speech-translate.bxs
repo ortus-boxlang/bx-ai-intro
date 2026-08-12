@@ -88,6 +88,24 @@ println( "AI summary        : #summary#" )
 println( "" )
 
 // ============================================================================
+// Example 5: Fluent Builder API — aiTranslate() called with no arguments
+// ============================================================================
+println( "--- Example 5: Fluent Builder API ---" )
+println( "" )
+
+// aiTranslate() with no arguments returns the SAME AiTranscriptionRequest builder
+// class that aiTranscribe() returns (see examples/29) — only the terminator
+// method differs: .translate() here instead of .transcribe().
+fluentTranslation = aiTranslate()
+    .file( spanishFile )
+    .asText()
+    .translate()
+
+println( "Fluent builder translation:" )
+println( fluentTranslation )
+println( "" )
+
+// ============================================================================
 // Key Takeaways
 // ============================================================================
 println( "========================================" )
@@ -98,4 +116,7 @@ println( "2. audio can be a file path, a URL, or raw binary data" )
 println( "3. aiTranscribe() preserves the original language; aiTranslate() outputs English" )
 println( "4. options.provider / params.model let you pick a specific Whisper endpoint" )
 println( "5. Chain aiTranslate() with aiChat() for richer multilingual workflows" )
+println( "6. aiTranslate() called with no arguments returns the SAME" )
+println( "   AiTranscriptionRequest builder as aiTranscribe() — only the terminator" )
+println( "   method differs: .translate() vs .transcribe()" )
 println( "" )

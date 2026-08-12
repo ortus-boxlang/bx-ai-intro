@@ -1,0 +1,116 @@
+/**
+* Example 33: Agent Registry
+*
+* aiAgentRegistry() is a singleton for centralized agent discoverability,
+* observability, and analytics — modeled after the AI Tool Registry. Register
+* agents once and resolve them by name anywhere in your application.
+*
+* What you'll learn:
+* - Registering agents at creation time and manually
+* - Resolving a mixed array of registry keys and agent instances
+* - Introspecting the registry for dashboards/debugging
+* - Unregistering agents individually or by module
+*
+* Run:
+*   boxlang examples/33-agent-registry.bxs
+*/
+println( "========================================" )
+println( "Example 33: Agent Registry" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Auto-Register at Creation Time
+// ============================================================================
+println( "--- Example 1: Register at Creation ---" )
+println( "" )
+
+supportAgent = aiAgent(
+    name        : "support-agent",
+    description : "Customer support specialist",
+    instructions: "Help customers with product questions.",
+    register    : true,
+    module      : "intro-demo"
+)
+
+println( "Registered as: support-agent@intro-demo" )
+println( "" )
+
+// ============================================================================
+// Example 2: Register Manually (agent already exists)
+// ============================================================================
+println( "--- Example 2: Register Manually ---" )
+println( "" )
+
+salesAgent = aiAgent(
+    name        : "sales-agent",
+    description : "Handles sales inquiries"
+)
+
+aiAgentRegistry().register( salesAgent, "intro-demo" )
+println( "Registered sales-agent@intro-demo manually" )
+println( "" )
+
+// ============================================================================
+// Example 3: List and Introspect
+// ============================================================================
+println( "--- Example 3: List & Introspect ---" )
+println( "" )
+
+allAgents = aiAgentRegistry().listAgents()
+println( "Registered agents: " & allAgents.count() )
+allAgents.each( ( key, info ) => {
+    println( "  - " & key & " → " & info.description )
+} )
+println( "" )
+
+info = aiAgentRegistry().getAgentInfo( "support-agent@intro-demo" )
+println( "getAgentInfo('support-agent@intro-demo'):" )
+println( "  name       : " & info.name )
+println( "  description: " & info.description )
+println( "  module     : " & info.module )
+println( "" )
+
+// ============================================================================
+// Example 4: Resolve a Mixed Array (keys + instances)
+// ============================================================================
+println( "--- Example 4: Resolve Mixed Array ---" )
+println( "" )
+
+resolved = aiAgentRegistry().resolveAgents( [
+    "support-agent@intro-demo",   // resolved by registry key
+    salesAgent                    // already an AiAgent instance — passed through
+] )
+
+println( "Resolved " & resolved.len() & " agent(s):" )
+resolved.each( ( a ) => println( "  - " & a.getName() ) )
+println( "" )
+
+// ============================================================================
+// Example 5: Unregister
+// ============================================================================
+println( "--- Example 5: Unregister ---" )
+println( "" )
+
+aiAgentRegistry().unregister( "sales-agent@intro-demo" )
+println( "Unregistered sales-agent@intro-demo" )
+println( "Remaining agents: " & aiAgentRegistry().listAgents().count() )
+
+// Clean up everything this example registered under "intro-demo"
+aiAgentRegistry().unregisterByModule( "intro-demo" )
+println( "unregisterByModule('intro-demo') → registry cleared for this demo" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiAgent( register: true, module: '...' ) registers at creation time" )
+println( "2. aiAgentRegistry().register( agent, module ) registers manually" )
+println( "3. Registry keys follow 'agentName' or 'agentName@module' convention" )
+println( "4. resolveAgents() accepts a mix of string keys and AiAgent instances" )
+println( "5. Registration is opt-in (defaults to false) to avoid leaking" )
+println( "   throwaway agents and sub-agents into the registry" )
+println( "" )

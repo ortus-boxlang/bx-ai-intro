@@ -119,10 +119,38 @@ Each example demonstrates specific features. Run them in order to build understa
 
 | # | Example | Topics |
 |---|---------|--------|
-| 28 | [Text-to-Speech](examples/28-speech-tts.bxs) | Synthesize speech with `aiSpeak()`, voices, HD models |
-| 29 | [Speech-to-Text](examples/29-speech-transcribe.bxs) | Transcribe audio with `aiTranscribe()`, language hints, TTS→STT round-trip |
-| 30 | [Audio Translation](examples/30-speech-translate.bxs) | Translate spoken audio to English with `aiTranslate()` |
+| 28 | [Text-to-Speech](examples/28-speech-tts.bxs) | Synthesize speech with `aiSpeak()`, voices, HD models, fluent builder API |
+| 29 | [Speech-to-Text](examples/29-speech-transcribe.bxs) | Transcribe audio with `aiTranscribe()`, language hints, TTS→STT round-trip, fluent builder API |
+| 30 | [Audio Translation](examples/30-speech-translate.bxs) | Translate spoken audio to English with `aiTranslate()`, fluent builder API |
 
+### Advanced Feature Examples
+
+| # | Example | Topics |
+|---|---------|--------|
+| 31 | [Image Generation](examples/31-image-generation.bxs) | Generate images with `aiImage()`, `AiImageResponse`, the `generateImage@bxai` tool |
+| 32 | [Web Search](examples/32-web-search.bxs) | `aiWebSearch()` / `aiWebSearchAsync()`, the `webSearch@bxai` tool |
+| 33 | [Agent Registry](examples/33-agent-registry.bxs) | `aiAgentRegistry()` — register, list, resolve, and discover agents |
+| 34 | [Security Guardrails](examples/34-security-guardrails.bxs) | `InputSanitizerMiddleware`, `aiFence()`/`addUntrusted()`, `OutputGuardMiddleware` |
+| 35 | [Gateways](examples/35-gateways.bxs) | `aiGateway()`, scripted approvals with the mock gateway |
+| 36 | [HITL Batching & Durable Grants](examples/36-hitl-batching-and-grants.bxs) | Batched tool-call approvals, `approve_always` durable grants |
+
+### Advanced Agent Mini-Apps (`agents/`)
+
+Each subfolder under [`agents/`](agents/) is a small, self-contained application built with bx-ai — deeper and more realistic than the numbered `examples/`.
+
+| Folder | Topics |
+|---|--------|
+| [01-web-search](agents/01-web-search) | Search-native provider (Perplexity sonar) — no custom tools needed |
+| [02-research](agents/02-research) | Explicit HTTP search/fetch/summarize tools, provider-agnostic |
+| [03-tools](agents/03-tools) | Production-style agent with calculator, unit conversion, timezone, currency, weather tools |
+| [04-memory](agents/04-memory) | Persistent memory across runs with FileMemory + SummaryMemory |
+| [05-subagents](agents/05-subagents) | Multi-agent orchestration — sub-agents as callable tools |
+| [06-skills](agents/06-skills) | Domain skills injection — always-on vs. lazy-loaded |
+| [07-rag-basic](agents/07-rag-basic) | Retrieval-augmented generation with pure-BoxLang TF-IDF, no external services |
+| [08-rag-vector](agents/08-rag-vector) | Production RAG with OpenAI embeddings + ChromaDB vector search |
+| [09-local-llm](agents/09-local-llm) | Fully local agents via Ollama — no API keys, no internet |
+| [10-enterprise](agents/10-enterprise) | Capstone: combines every capability from 01-09 into one workflow system |
+| [11-mcp-server](agents/11-mcp-server) | Building an MCP server: tools, resources, prompts, pause/resume, IP allowlisting, observability |
 
 ---
 

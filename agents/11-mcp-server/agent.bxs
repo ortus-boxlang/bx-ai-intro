@@ -1,0 +1,145 @@
+/**
+ * Agent Example 11: Building an MCP Server
+ *
+ * Every other example in this repo CONSUMES tools, models, or MCP servers.
+ * This one builds one: register tools/resources/prompts, pause/resume the
+ * server without losing configuration, restrict it to an IP allowlist, and
+ * read back observability stats — the shape of a real production MCP server.
+ *
+ * What you'll learn:
+ * - Registering tools, a resource, and a prompt template on MCPServer
+ * - Handling JSON-RPC requests directly (handleRequest())
+ * - pause()/resume() to temporarily halt a server without losing its config
+ * - IP allowlisting with withAllowedIPs() and verifyClientIP()
+ * - Reading getSummary()/getStats() for observability dashboards
+ *
+ * Run:
+ *   boxlang agents/11-mcp-server/agent.bxs
+ */
+
+println( "=============================================" )
+println( "Agent 11: Building an MCP Server" )
+println( "=============================================" )
+println( "" )
+
+// -----------------------------------------------------------------------
+// Build the server: tools, a resource, and a prompt template
+// -----------------------------------------------------------------------
+inventoryServer = MCPServer( "inventory-api" )
+    .setDescription( "Inventory lookup and stock management" )
+    .setVersion( "1.0.0" )
+
+inventoryServer.registerTool(
+    aiTool( "lookupStock", "Look up stock level for a SKU", ( sku ) => {
+        return { sku: sku, quantity: 42, warehouse: "east-1" }
+    } )
+        .describeArg( "sku", "The product SKU to look up" )
+)
+
+inventoryServer.registerTool(
+    aiTool( "reserveStock", "Reserve units of a SKU for an order", ( sku, quantity ) => {
+        return { sku: sku, reserved: quantity, status: "confirmed" }
+    } )
+        .describeArg( "sku", "The product SKU" )
+        .describeArg( "quantity", "Units to reserve" )
+)
+
+inventoryServer.registerResource(
+    uri        : "docs://inventory-api",
+    name       : "Inventory API Guide",
+    description: "How to use the inventory tools",
+    mimeType   : "text/markdown",
+    handler    : () => "## Inventory API" & chr( 10 ) & "Use lookupStock and reserveStock to manage stock levels."
+)
+
+inventoryServer.registerPrompt(
+    name       : "restockAlert",
+    description: "Generate a restock alert message",
+    args       : [
+        { name: "sku", description: "The SKU running low", required: true },
+        { name: "quantity", description: "Remaining quantity", required: true }
+    ],
+    handler: ( args ) => [
+        { role: "user", content: "Write a short restock alert for SKU #args.sku# — only #args.quantity# units left." }
+    ]
+)
+
+println( "Server built: inventory-api v1.0.0" )
+println( "Tools: " & inventoryServer.listTools().len() )
+println( "" )
+
+// -----------------------------------------------------------------------
+// Talk to it directly via JSON-RPC — the same protocol a real MCP client uses
+// -----------------------------------------------------------------------
+println( "--- Calling a tool over JSON-RPC ---" )
+
+callResponse = inventoryServer.handleRequest( {
+    "jsonrpc": "2.0",
+    "method" : "tools/call",
+    "id"     : "1",
+    "params" : { "name": "lookupStock", "arguments": { "sku": "WIDGET-100" } }
+} )
+println( "Result: " & jsonSerialize( callResponse.result ) )
+println( "" )
+
+// -----------------------------------------------------------------------
+// Pause / Resume — halt a server without destroying its configuration
+// -----------------------------------------------------------------------
+println( "--- Pause & Resume ---" )
+
+inventoryServer.pause()
+println( "Paused: " & inventoryServer.isPaused() )
+
+pausedResponse = inventoryServer.handleRequest( {
+    "jsonrpc": "2.0",
+    "method" : "tools/call",
+    "id"     : "2",
+    "params" : { "name": "lookupStock", "arguments": { "sku": "WIDGET-100" } }
+} )
+println( "Request while paused → error code: " & ( pausedResponse.error.code ?: "none" ) )
+
+inventoryServer.resume()
+println( "Resumed: " & !inventoryServer.isPaused() )
+println( "" )
+
+// -----------------------------------------------------------------------
+// IP Allowlisting — restrict which clients can reach this server
+// -----------------------------------------------------------------------
+println( "--- IP Allowlisting ---" )
+
+inventoryServer.withAllowedIPs( [ "10.0.0.0/24", "127.0.0.1" ] )
+println( "Has allowlist: " & inventoryServer.hasAllowedIPs() )
+println( "10.0.0.55 allowed  : " & inventoryServer.verifyClientIP( "10.0.0.55" ) )
+println( "203.0.113.9 allowed: " & inventoryServer.verifyClientIP( "203.0.113.9" ) )
+
+// Clear it so the rest of this demo isn't accidentally restricted
+inventoryServer.clearAllowedIPs()
+println( "" )
+
+// -----------------------------------------------------------------------
+// Observability — summary + detailed stats
+// -----------------------------------------------------------------------
+println( "--- Observability ---" )
+
+// Generate a little traffic so the stats have something to show
+inventoryServer.handleRequest( { "jsonrpc": "2.0", "method": "tools/list", "id": "3" } )
+inventoryServer.handleRequest( { "jsonrpc": "2.0", "method": "tools/call", "id": "4",
+    "params": { "name": "reserveStock", "arguments": { "sku": "WIDGET-100", "quantity": 5 } } } )
+
+summary = inventoryServer.getSummary()
+println( "Summary  : toolCount=" & summary.toolCount & " paused=" & summary.paused )
+
+statsSummary = inventoryServer.getStatsSummary()
+println( "Stats    : requestsPerMinute=" & statsSummary.requestsPerMinute ?: 0 )
+println( "" )
+
+// -----------------------------------------------------------------------
+// Key Takeaways
+// -----------------------------------------------------------------------
+println( "KEY TAKEAWAYS:" )
+println( "  * MCPServer() builds a server; registerTool/Resource/Prompt populate it" )
+println( "  * handleRequest() speaks raw JSON-RPC — the same wire format real MCP" )
+println( "    clients (like examples/26-agent-mcpservers.bxs) use to connect" )
+println( "  * pause()/resume() halt request handling without losing configuration" )
+println( "  * withAllowedIPs() restricts access by IP/CIDR; verifyClientIP() checks it" )
+println( "  * getSummary()/getStatsSummary() feed observability dashboards" )

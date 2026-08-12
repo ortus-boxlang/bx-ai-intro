@@ -1,0 +1,138 @@
+/**
+* Example 35: Gateways
+*
+* A gateway is a bidirectional adapter that presents agent interactions —
+* especially human approvals — on a platform: CLI, HTTP webhook, or an
+* external module you register yourself. aiGateway() resolves one by name;
+* attach it to HumanInTheLoopMiddleware and every approval flows through it.
+*
+* This example uses the "mock" gateway with scripted decisions so it runs
+* fully offline and non-interactively. Compare with examples/25, which uses
+* the default CLI gateway (blocks on stdin waiting for you to type a decision).
+*
+* What you'll learn:
+* - Resolving gateways by name with aiGateway()
+* - Scripting approval decisions for automated/offline testing
+* - Attaching a gateway to HumanInTheLoopMiddleware
+* - The gateway capability vocabulary
+*
+* Run:
+*   boxlang examples/35-gateways.bxs
+*/
+import bxModules.bxai.models.middleware.core.HumanInTheLoopMiddleware
+import bxModules.bxai.models.runnables.AiModel
+
+println( "========================================" )
+println( "Example 35: Gateways" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Resolving Gateways by Name
+// ============================================================================
+println( "--- Example 1: Resolving Gateways ---" )
+println( "" )
+
+mockGateway = aiGateway( "mock" )
+println( "mock gateway  : " & mockGateway.getName() & " — " & mockGateway.getDescription() )
+
+cliGateway = aiGateway( "cli" )
+println( "cli gateway   : " & cliGateway.getName() )
+println( "  (cli is the default gateway HumanInTheLoopMiddleware uses when none is" )
+println( "   supplied — it blocks on stdin, see examples/25 for a live run)" )
+println( "" )
+
+println( "mock capabilities: " & mockGateway.getCapabilities().toList( ", " ) )
+println( "supports humanApproval: " & mockGateway.supports( "humanApproval" ) )
+println( "" )
+
+// ============================================================================
+// Example 2: Scripted Approvals — Fully Automated Demo
+// ============================================================================
+println( "--- Example 2: Scripted Approval Flow ---" )
+println( "" )
+
+// Pre-script the decision the "human" will give — resolves synchronously,
+// same as a blocking CLI prompt would, but with zero I/O.
+mockGateway.setScriptedDecisions( [ "approve" ] )
+
+deployTool = aiTool(
+    "deployRelease",
+    "Deploy a release to production.",
+    ( version, environment ) => "Deployment started for version #version# to #environment#."
+)
+    .describeVersion( "The version to deploy, e.g. 2.4.1" )
+    .describeEnvironment( "The target environment" )
+
+// A scripted mock model so this example runs fully offline — a real model would
+// decide on its own to call deployRelease from the user's message.
+approveModelSvc = aiService( "mock" )
+approveModelSvc.setResponses( [
+    { toolCalls: [ { name: "deployRelease", arguments: { version: "2.5.0", environment: "production" } } ] },
+    "Deployment of 2.5.0 to production has started."
+] )
+
+// Any gateway other than the default CliGateway can (in principle) suspend a
+// run, so HumanInTheLoopMiddleware requires a checkpointer at attach time —
+// even here, where the scripted decision means it always resolves instantly.
+gatewayAgent = aiAgent(
+    name        : "deploy-agent",
+    instructions: "You coordinate deployments. Use deployRelease when asked to deploy.",
+    model       : new AiModel( service: approveModelSvc ),
+    tools       : [ deployTool ],
+    checkpointer: aiMemory( "cache" ),
+    middleware  : [ new HumanInTheLoopMiddleware(
+        toolsRequiringApproval: [ "deployRelease" ],
+        gateway               : mockGateway
+    ) ]
+)
+
+println( "Running agent — the scripted 'approve' resolves the gateway prompt instantly:" )
+result = gatewayAgent.run( "Deploy version 2.5.0 to production." )
+println( "Result: " & result )
+println( "" )
+
+// ============================================================================
+// Example 3: Scripted Rejection
+// ============================================================================
+println( "--- Example 3: Scripted Rejection ---" )
+println( "" )
+
+rejectingGateway = aiGateway( "mock" )
+rejectingGateway.setScriptedDecisions( [ "reject" ] )
+
+rejectModelSvc = aiService( "mock" )
+rejectModelSvc.setResponses( [
+    { toolCalls: [ { name: "deployRelease", arguments: { version: "1.0.0-beta", environment: "production" } } ] },
+    "Understood — I won't deploy 1.0.0-beta to production without approval."
+] )
+
+cautiousAgent = aiAgent(
+    name        : "cautious-deploy-agent",
+    instructions: "You coordinate deployments. Use deployRelease when asked to deploy.",
+    model       : new AiModel( service: rejectModelSvc ),
+    tools       : [ deployTool ],
+    checkpointer: aiMemory( "cache" ),
+    middleware  : [ new HumanInTheLoopMiddleware(
+        toolsRequiringApproval: [ "deployRelease" ],
+        gateway               : rejectingGateway
+    ) ]
+)
+
+rejectedResult = cautiousAgent.run( "Deploy version 1.0.0-beta to production." )
+println( "Result: " & rejectedResult )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiGateway( name, options ) resolves core gateways: mock, cli, http" )
+println( "2. HumanInTheLoopMiddleware( gateway: ... ) routes approvals through it" )
+println( "3. MockGateway.setScriptedDecisions() enables fully automated testing" )
+println( "4. Every gateway declares capabilities (getCapabilities()/supports())" )
+println( "5. Platform gateways (Slack, Teams, etc.) ship as external modules and" )
+println( "   register into gatewayRegistry() — aiGateway('myplatform') then finds them" )
+println( "" )

@@ -1,0 +1,171 @@
+/**
+* Example 36: Advanced HITL — Batched Approvals & Durable Grants
+*
+* This extends examples/25's single-approval flow with two features from the
+* HITL subsystem: when a turn requests MULTIPLE tool calls needing approval,
+* they now suspend together as ONE checkpoint instead of one at a time — and
+* approve_always/approve_session grants let a human approve a tool ONCE and
+* have it auto-approve on every later run, via a durable IDecisionStore.
+*
+* This example runs fully offline against the "mock" provider so both flows
+* are deterministic and reproducible.
+*
+* What you'll learn:
+* - Scripting a multi-tool-call turn to trigger a batch suspension
+* - Reading result.getData().pendingActions for all pending calls at once
+* - Resuming with an array of per-call decisions, in order
+* - Granting "approve_always" so a later run skips approval entirely
+*
+* Run:
+*   boxlang examples/36-hitl-batching-and-grants.bxs
+*/
+import bxModules.bxai.models.middleware.core.HumanInTheLoopMiddleware
+import bxModules.bxai.models.runnables.AiModel
+
+println( "========================================" )
+println( "Example 36: Batched Approvals & Durable Grants" )
+println( "========================================" )
+println( "" )
+
+deleteRecordTool = aiTool(
+    "deleteRecord",
+    "Delete a customer record permanently.",
+    ( recordId ) => "Deleted record #recordId#."
+).describeRecordId( "The record ID to delete" )
+
+archiveRecordTool = aiTool(
+    "archiveRecord",
+    "Archive a customer record (reversible).",
+    ( recordId ) => "Archived record #recordId#."
+).describeRecordId( "The record ID to archive" )
+
+// ============================================================================
+// Part 1: Batched Approvals — One Suspension for Two Pending Tool Calls
+// ============================================================================
+println( "--- Part 1: Batched Approvals ---" )
+println( "" )
+
+// Script the model to request BOTH tool calls in a single turn, then reply
+// once both are resolved — a real model can do this on its own; scripting it
+// here keeps the example deterministic. Using aiService("mock").setResponses()
+// (an INSTANCE-level queue on the mock service) rather than the per-request
+// providerOptions.responses option — the latter is re-seeded fresh on every
+// separate run()/resume() call, so it can't carry state across a suspend →
+// resume lifecycle the way this scripted queue needs to.
+batchModelSvc = aiService( "mock" )
+batchModelSvc.setResponses( [
+    { toolCalls: [
+        { name: "deleteRecord",  arguments: { recordId: "CUST-1001" } },
+        { name: "archiveRecord", arguments: { recordId: "CUST-1002" } }
+    ] },
+    "Processed both requested record actions."
+] )
+
+batchAgent = aiAgent(
+    name        : "records-agent",
+    instructions: "You manage customer records.",
+    model       : new AiModel( service: batchModelSvc ),
+    tools       : [ deleteRecordTool, archiveRecordTool ],
+    checkpointer: aiMemory( "cache" ),
+    middleware  : [ new HumanInTheLoopMiddleware(
+        toolsRequiringApproval: [ "deleteRecord", "archiveRecord" ],
+        mode                  : "web"   // suspends instead of blocking on stdin
+    ) ]
+)
+
+batchThreadId = "batch-demo-thread"
+batchResult   = batchAgent.run( "Delete record CUST-1001 and archive record CUST-1002.", {}, { threadId: batchThreadId } )
+
+if ( isObject( batchResult ) && batchResult.isSuspended() ) {
+    pending = batchResult.getData().pendingActions
+    println( "Suspended ONCE for " & pending.len() & " pending tool call(s):" )
+    pending.each( ( p ) => println( "  - " & p.toolName & "(" & jsonSerialize( p.toolArgs ) & ")" ) )
+    println( "" )
+
+    // One decision per pending call, in the same order they were presented
+    println( "Resuming with: [ approve, reject ]" )
+    finalAnswer = batchAgent.resume( [ "approve", "reject" ], batchThreadId )
+    println( "Final: " & finalAnswer )
+} else {
+    println( "Note: expected a batch suspension but got: " & batchResult )
+}
+println( "" )
+
+// ============================================================================
+// Part 2: Durable Grants — approve_always
+// ============================================================================
+println( "--- Part 2: Durable Grants (approve_always) ---" )
+println( "" )
+
+// Same reasoning as batchModelSvc above — an instance-level queue so the SAME
+// scripted sequence carries correctly across both agent.run() calls below.
+grantModelSvc = aiService( "mock" )
+grantModelSvc.setResponses( [
+    { toolCalls: [ { name: "deleteRecord", arguments: { recordId: "CUST-2001" } } ] },
+    "Record CUST-2001 deleted.",
+    { toolCalls: [ { name: "deleteRecord", arguments: { recordId: "CUST-2002" } } ] },
+    "Record CUST-2002 deleted."
+] )
+
+// A durable grant needs a suspensionID to record against, and only a gateway
+// presentation carries one — mode "web" (Part 1, above) has nowhere to attach
+// it, since nothing is ever "presented" anywhere. An unscripted mock gateway
+// (no setScriptedDecisions()) behaves like a real async gateway: it presents
+// the request and leaves it pending, exactly what approve_always needs.
+grantGateway = aiGateway( "mock" )
+
+grantAgent = aiAgent(
+    name        : "records-agent-grants",
+    instructions: "You manage customer records.",
+    model       : new AiModel( service: grantModelSvc ),
+    tools       : [ deleteRecordTool ],
+    checkpointer: aiMemory( "cache" ),
+    middleware  : [ new HumanInTheLoopMiddleware(
+        toolsRequiringApproval: [ "deleteRecord" ],
+        gateway               : grantGateway
+    ) ]
+)
+
+// First run — as user "alice". Suspends; grant "approve_always" this time.
+println( "Run 1 (user: alice) — approving with 'approve_always'..." )
+firstThreadId = "grant-demo-thread-1"
+firstResult   = grantAgent.run( "Delete record CUST-2001.", {}, { threadId: firstThreadId, userId: "alice" } )
+
+if ( isObject( firstResult ) && firstResult.isSuspended() ) {
+    grantAgent.resume( "approve_always", firstThreadId )
+    println( "Approved with a durable grant for alice + deleteRecord." )
+}
+println( "" )
+
+// Second run — SAME user, same tool, a NEW conversation thread. The grant
+// from Run 1 auto-approves it: no suspension this time.
+println( "Run 2 (user: alice, new thread) — same tool, no approval prompt expected..." )
+secondThreadId = "grant-demo-thread-2"
+secondResult   = grantAgent.run( "Delete record CUST-2002.", {}, { threadId: secondThreadId, userId: "alice" } )
+
+if ( isObject( secondResult ) && secondResult.isSuspended() ) {
+    println( "Unexpected suspension — grant did not apply." )
+} else {
+    println( "Auto-approved via the durable grant: " & secondResult )
+}
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Multiple tool calls needing approval in one turn suspend ONCE, not" )
+println( "   one at a time — see result.getData().pendingActions" )
+println( "2. agent.resume() accepts an array of decisions, one per pending call," )
+println( "   in the order they were presented" )
+println( "3. 'approve_always' records a durable grant via IDecisionStore" )
+println( "   (aiDecisionStore(), default cache-backed)" )
+println( "4. Grants need a gateway-presented suspension (even an unscripted async" )
+println( "   mock gateway) — mode 'web' has no suspensionID to record one against" )
+println( "5. Grants are scoped to (userId, toolName) — pass userId in run()" )
+println( "   options for grants to actually persist and be checked" )
+println( "6. A later run for the same user + tool auto-approves — no prompt," )
+println( "   no suspension" )
+println( "" )
