@@ -114,6 +114,13 @@ grantModelSvc.setResponses( [
 // the request and leaves it pending, exactly what approve_always needs.
 grantGateway = aiGateway( "mock" )
 
+// Build the IDecisionStore explicitly and wire it into the middleware, rather than
+// letting HumanInTheLoopMiddleware fall back to the module-default store implicitly.
+// aiDecisionStore( store, config ) resolves store: "cache" | "jdbc" | "file" — "cache"
+// backs grants with a BoxLang named cache, the same default settings.hitl.decisionStore
+// would resolve to if this were omitted entirely.
+grantDecisionStore = aiDecisionStore( "cache" )
+
 grantAgent = aiAgent(
     name        : "records-agent-grants",
     instructions: "You manage customer records.",
@@ -122,7 +129,8 @@ grantAgent = aiAgent(
     checkpointer: aiMemory( "cache" ),
     middleware  : [ new HumanInTheLoopMiddleware(
         toolsRequiringApproval: [ "deleteRecord" ],
-        gateway               : grantGateway
+        gateway               : grantGateway,
+        decisionStore         : grantDecisionStore
     ) ]
 )
 
@@ -160,8 +168,8 @@ println( "1. Multiple tool calls needing approval in one turn suspend ONCE, not"
 println( "   one at a time — see result.getData().pendingActions" )
 println( "2. agent.resume() accepts an array of decisions, one per pending call," )
 println( "   in the order they were presented" )
-println( "3. 'approve_always' records a durable grant via IDecisionStore" )
-println( "   (aiDecisionStore(), default cache-backed)" )
+println( "3. 'approve_always' records a durable grant via an IDecisionStore — built here" )
+println( "   with aiDecisionStore( 'cache' ) and passed to decisionStore:" )
 println( "4. Grants need a gateway-presented suspension (even an unscripted async" )
 println( "   mock gateway) — mode 'web' has no suspensionID to record one against" )
 println( "5. Grants are scoped to (userId, toolName) — pass userId in run()" )

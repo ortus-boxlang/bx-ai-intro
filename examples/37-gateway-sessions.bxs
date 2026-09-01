@@ -1,0 +1,262 @@
+/**
+* Example 37: Gateway Sessions
+*
+* A GatewaySession is the orchestrator that wires ONE AiAgent to one-or-more IGateway
+* instances for inbound message handling. It is the piece that decides what happens when
+* a SECOND inbound message arrives for a thread that already has a turn in flight — a
+* single aiGateway() resolves a gateway, but only a GatewaySession decides call / buffer /
+* splice / interrupt for a busy thread. aiGatewaySession() returns an UNSTARTED session;
+* call .start() to begin accepting inbound messages.
+*
+* This example drives GatewaySession.handleInbound() directly (rather than through a real
+* gateway push) and triggers every "second message while busy" scenario from INSIDE a tool
+* closure that runs synchronously during the first turn — the same deterministic trick the
+* module's own GatewaySessionTest suite uses, so this example runs fully offline against the
+* "mock" provider with no sleeps, no real threads, and no API key required.
+*
+* What you'll learn:
+* - Constructing a GatewaySession with an array of gateways
+* - The four inbound-message policies: reject, queue, steer, interrupt
+* - maxQueueDepth — capping how many messages can buffer before overflow falls back to reject
+* - Lifecycle: .start(), .isRunning(), .getActiveThreadIds(), .getQueueDepth( threadId )
+*
+* Run:
+*   boxlang examples/37-gateway-sessions.bxs
+*/
+import bxModules.bxai.models.runnables.AiModel
+
+println( "========================================" )
+println( "Example 37: Gateway Sessions" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Policy Vocabulary — what each of the four policies does for a busy thread
+// ============================================================================
+// - "reject"    Immediately reply that a response is already in progress. The new
+//               message is dropped — nothing queued, nothing spliced in.
+// - "queue"     Buffer the message; it dispatches as its OWN fresh turn right after
+//               the current turn finishes (and after every earlier buffered message
+//               ahead of it has drained, in order).
+// - "steer"     Splice the message into the turn ALREADY RUNNING via agent.steerRun() —
+//               not a new turn at all. Non-destructive; nothing already in progress
+//               restarts. See examples/38 for steerRun()/cancelRun() on their own.
+// - "interrupt" Ask the current turn to stop via agent.cancelRun() (takes effect at its
+//               next checkpoint, not instantly), then queue the new message the same way
+//               "queue" does, so it dispatches as a fresh turn once the cancelled one exits.
+println( "--- Policy Vocabulary ---" )
+println( "reject | queue | steer | interrupt — see the source comment above for what" )
+println( "each one does to a message that arrives for an already-busy thread." )
+println( "" )
+
+// A little helper so every section below prints delivered gateway events the same way,
+// without hard-coding an exact delivery order (queue/interrupt overflow and drain timing
+// are correct either way — printing everything delivered is the honest demonstration).
+function printDelivered( required array delivered ) {
+    delivered.each( ( evt, i ) => {
+        var data = evt.getData()
+        var content = data.content ?: ""
+        var reason  = data.reason ?: ""
+        println( "  " & i & ". type=" & evt.getType() & "  content=[" & content & "]  reason=[" & reason & "]" )
+    } )
+}
+
+// ============================================================================
+// Example 1: "reject" — a busy thread immediately rejects a second message
+// ============================================================================
+println( "--- Example 1: reject policy ---" )
+println( "" )
+
+rejectModelSvc = aiService( "mock" )
+rejectModelSvc.setResponses( [
+    { toolCalls: [ { name: "slowStep", arguments: {} } ] },
+    "Reject-demo turn finished."
+] )
+
+rejectGateway = aiGateway( "mock" )
+rejectAgent   = aiAgent( name: "reject-demo-agent", model: new AiModel( service: rejectModelSvc ) )
+rejectThreadId = "reject-demo-thread"
+rejectSession = aiGatewaySession( agent: rejectAgent, gateways: [ rejectGateway ], policy: "reject" )
+
+slowStepReject = aiTool( "slowStep", "One step of a longer turn.", () => {
+    // Fired synchronously WHILE the first turn is still in flight — this is
+    // exactly the "busy thread" scenario the reject policy exists for.
+    var second = rejectGateway.parseInbound( {
+        text: "are you free yet?", userID: "u1", conversationID: "c1", threadID: rejectThreadId
+    } )
+    rejectSession.handleInbound( second[ 1 ], rejectGateway )
+    return "step done"
+} )
+rejectAgent.withTools( [ slowStepReject ] )
+
+rejectFirst = rejectGateway.parseInbound( { text: "start", userID: "u1", conversationID: "c1", threadID: rejectThreadId } )
+rejectSession.handleInbound( rejectFirst[ 1 ], rejectGateway ).get()
+
+println( "Delivered events (expect a rejection + the eventual completion):" )
+printDelivered( rejectGateway.getDeliveredEvents() )
+println( "" )
+
+// ============================================================================
+// Example 2: "queue" + maxQueueDepth — buffering, in-order drain, and overflow
+// ============================================================================
+println( "--- Example 2: queue policy + maxQueueDepth ---" )
+println( "" )
+
+queueModelSvc = aiService( "mock" )
+queueModelSvc.setResponses( [
+    { toolCalls: [ { name: "slowStepQueue", arguments: {} } ] },
+    "First.",
+    "Second."
+] )
+
+queueGateway = aiGateway( "mock" )
+queueAgent   = aiAgent( name: "queue-demo-agent", model: new AiModel( service: queueModelSvc ) )
+queueThreadId = "queue-demo-thread"
+// maxQueueDepth: 1 — small on purpose, so a THIRD message arriving while the thread is
+// already busy AND one message is already buffered demonstrates the overflow-to-reject
+// fallback, not just the happy-path buffer/drain.
+queueSession = aiGatewaySession( agent: queueAgent, gateways: [ queueGateway ], policy: "queue", maxQueueDepth: 1 )
+
+slowStepQueue = aiTool( "slowStepQueue", "One step of a longer turn.", () => {
+    var second = queueGateway.parseInbound( {
+        text: "second message", userID: "u1", conversationID: "c1", threadID: queueThreadId
+    } )
+    queueSession.handleInbound( second[ 1 ], queueGateway )
+    println( "  queue depth after buffering message 2: #queueSession.getQueueDepth( queueThreadId )#" )
+
+    var third = queueGateway.parseInbound( {
+        text: "third message — should overflow", userID: "u1", conversationID: "c1", threadID: queueThreadId
+    } )
+    queueSession.handleInbound( third[ 1 ], queueGateway )
+    println( "  queue depth after buffering message 3 (cap is 1, should still be 1): #queueSession.getQueueDepth( queueThreadId )#" )
+
+    return "step done"
+} )
+queueAgent.withTools( [ slowStepQueue ] )
+
+qFirst = queueGateway.parseInbound( { text: "start", userID: "u1", conversationID: "c1", threadID: queueThreadId } )
+queueSession.handleInbound( qFirst[ 1 ], queueGateway ).get()
+
+println( "Delivered events (expect the 3rd message rejected as overflow, plus two completions):" )
+printDelivered( queueGateway.getDeliveredEvents() )
+println( "No thread still active: #queueSession.getActiveThreadIds().isEmpty()#" )
+println( "" )
+
+// ============================================================================
+// Example 3: "steer" — splices into the SAME live turn, no second turn at all
+// ============================================================================
+println( "--- Example 3: steer policy ---" )
+println( "" )
+
+steerModelSvc = aiService( "mock" )
+steerModelSvc.setResponses( [
+    { toolCalls: [ { name: "slowStepSteer", arguments: {} } ] },
+    "Final answer, steered content included."
+] )
+
+steerGateway = aiGateway( "mock" )
+steerAgent   = aiAgent( name: "steer-demo-agent", model: new AiModel( service: steerModelSvc ) )
+steerThreadId = "steer-demo-thread"
+steerSession = aiGatewaySession( agent: steerAgent, gateways: [ steerGateway ], policy: "steer" )
+
+slowStepSteer = aiTool( "slowStepSteer", "One step of a longer turn.", () => {
+    var second = steerGateway.parseInbound( {
+        text: "Please also mention BANANA.", userID: "u1", conversationID: "c1", threadID: steerThreadId
+    } )
+    steerSession.handleInbound( second[ 1 ], steerGateway )
+    return "step done"
+} )
+steerAgent.withTools( [ slowStepSteer ] )
+
+sFirst = steerGateway.parseInbound( { text: "start", userID: "u1", conversationID: "c1", threadID: steerThreadId } )
+steerSession.handleInbound( sFirst[ 1 ], steerGateway ).get()
+
+steerDelivered = steerGateway.getDeliveredEvents()
+println( "Delivered events (expect exactly ONE completion — steer never starts a new turn):" )
+printDelivered( steerDelivered )
+
+steeredReachedRequest = false
+steerModelSvc.getReceivedRequests().last().messages.each( ( m ) => {
+    if ( isSimpleValue( m.content ?: "" ) && m.content contains "BANANA" ) {
+        steeredReachedRequest = true
+    }
+} )
+println( "Steered text reached the live request: #steeredReachedRequest#" )
+println( "" )
+
+// ============================================================================
+// Example 4: "interrupt" — cancels the current turn, THEN dispatches the new one fresh
+// ============================================================================
+println( "--- Example 4: interrupt policy ---" )
+println( "" )
+
+interruptModelSvc = aiService( "mock" )
+interruptModelSvc.setResponses( [
+    { toolCalls: [ { name: "slowStepInterrupt", arguments: {} } ] },
+    "Interrupt-demo reply."
+] )
+
+interruptGateway = aiGateway( "mock" )
+interruptAgent   = aiAgent( name: "interrupt-demo-agent", model: new AiModel( service: interruptModelSvc ) )
+interruptThreadId = "interrupt-demo-thread"
+interruptSession = aiGatewaySession( agent: interruptAgent, gateways: [ interruptGateway ], policy: "interrupt" )
+
+slowStepInterrupt = aiTool( "slowStepInterrupt", "One step of a longer turn.", () => {
+    var second = interruptGateway.parseInbound( {
+        text: "interrupting message", userID: "u1", conversationID: "c1", threadID: interruptThreadId
+    } )
+    interruptSession.handleInbound( second[ 1 ], interruptGateway )
+    return "step done"
+} )
+interruptAgent.withTools( [ slowStepInterrupt ] )
+
+iFirst = interruptGateway.parseInbound( { text: "start", userID: "u1", conversationID: "c1", threadID: interruptThreadId } )
+interruptSession.handleInbound( iFirst[ 1 ], interruptGateway ).get()
+
+println( "Delivered events (expect the first turn cancelled cleanly, then the 2nd dispatched fresh):" )
+printDelivered( interruptGateway.getDeliveredEvents() )
+println( "" )
+
+// ============================================================================
+// Example 5: Lifecycle — start(), isRunning(), getActiveThreadIds(), stop()
+// ============================================================================
+println( "--- Example 5: Session Lifecycle ---" )
+println( "" )
+
+lifecycleModelSvc = aiService( "mock" )
+lifecycleModelSvc.setResponses( [ "Lifecycle demo reply." ] )
+
+lifecycleGateway = aiGateway( "mock" )
+lifecycleAgent   = aiAgent( name: "lifecycle-demo-agent", model: new AiModel( service: lifecycleModelSvc ) )
+lifecycleSession = aiGatewaySession( agent: lifecycleAgent, gateways: [ lifecycleGateway ], policy: "queue" )
+
+println( "Before start() — isRunning(): #lifecycleSession.isRunning()#" )
+// start() wires this session's dispatch as every attached gateway's onMessage() callback
+// and starts each gateway — in production, gateways push inbound messages automatically
+// from here on. This example still drives handleInbound() directly for determinism.
+lifecycleSession.start()
+println( "After start()  — isRunning(): #lifecycleSession.isRunning()#" )
+
+lFirst = lifecycleGateway.parseInbound( { text: "hello", userID: "u1", conversationID: "c1", threadID: "lifecycle-thread" } )
+lifecycleSession.handleInbound( lFirst[ 1 ], lifecycleGateway ).get()
+activeThreadIds = lifecycleSession.getActiveThreadIds().toList( ", " )
+println( "Active thread ids after the turn completes: #activeThreadIds# (expect none — it already finished)" )
+
+lifecycleSession.stop()
+println( "After stop()   — isRunning(): #lifecycleSession.isRunning()#" )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. aiGatewaySession( agent, gateways, policy, maxQueueDepth ) wires ONE agent to" )
+println( "   one-or-more gateways and decides what happens on a busy thread" )
+println( "2. reject: drop the new message immediately | queue: buffer it for its own turn" )
+println( "3. steer: splice into the CURRENT turn | interrupt: cancel current, then queue" )
+println( "4. maxQueueDepth caps buffered messages per thread — further ones fall back to reject" )
+println( "5. .getQueueDepth( threadId ) / .getActiveThreadIds() are non-destructive inspection" )
+println( "6. .start()/.stop()/.isRunning() control whether NEW inbound messages are accepted" )
+println( "" )

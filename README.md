@@ -130,9 +130,13 @@ Each example demonstrates specific features. Run them in order to build understa
 | 31 | [Image Generation](examples/31-image-generation.bxs) | Generate images with `aiImage()`, `AiImageResponse`, the `generateImage@bxai` tool |
 | 32 | [Web Search](examples/32-web-search.bxs) | `aiWebSearch()` / `aiWebSearchAsync()`, the `webSearch@bxai` tool |
 | 33 | [Agent Registry](examples/33-agent-registry.bxs) | `aiAgentRegistry()` — register, list, resolve, and discover agents |
-| 34 | [Security Guardrails](examples/34-security-guardrails.bxs) | `InputSanitizerMiddleware`, `aiFence()`/`addUntrusted()`, `OutputGuardMiddleware` |
-| 35 | [Gateways](examples/35-gateways.bxs) | `aiGateway()`, scripted approvals with the mock gateway |
-| 36 | [HITL Batching & Durable Grants](examples/36-hitl-batching-and-grants.bxs) | Batched tool-call approvals, `approve_always` durable grants |
+| 34 | [Security Guardrails](examples/34-security-guardrails.bxs) | `InputSanitizerMiddleware`, `aiFence()`/`addUntrusted()`, `OutputGuardMiddleware`, `LLMGuardMiddleware` |
+| 35 | [Gateways](examples/35-gateways.bxs) | `aiGateway()`, scripted approvals with the mock gateway, `register:`/`module:` auto-registration |
+| 36 | [HITL Batching & Durable Grants](examples/36-hitl-batching-and-grants.bxs) | Batched tool-call approvals, `approve_always` durable grants, `aiDecisionStore()` |
+| 37 | [Gateway Sessions](examples/37-gateway-sessions.bxs) | `aiGatewaySession()` — reject/queue/steer/interrupt policies, `maxQueueDepth`, lifecycle |
+| 38 | [Agent Run Control](examples/38-agent-run-control.bxs) | `agent.cancelRun()` / `agent.steerRun()`, `onAIAgentRunCancel`/`onAIAgentRunSteer` |
+| 39 | [Reasoning](examples/39-reasoning.bxs) | Enabling reasoning (Claude `thinking`, OpenAI `reasoning_effort`), reading `message.reasoning` sync & streaming |
+| 40 | [AWS Bedrock](examples/40-bedrock.bxs) | `provider: "bedrock"`, bearer-token auth, default AWS credential chain, Claude tool-use on Bedrock |
 
 ### Advanced Agent Mini-Apps (`agents/`)
 
@@ -165,11 +169,14 @@ Each subfolder under [`agents/`](agents/) is a small, self-contained application
             "settings": {
                 "provider": "openrouter",
                 "defaultParams": {
-                    "model": "stepfun/step-3.5-flash"
+                    "model": "openrouter/free"
                 },
-                "timeout": 30,
+                // Omitted on purpose — inherits the module's own 90s default.
+                // "timeout": 90,
                 "logRequestToConsole": false,
                 "returnFormat": "single"
+                // ...plus providers (openai/claude/bedrock), security, gateways, and hitl —
+                // see the full, commented config/boxlang.json for all of it.
             }
         }
     }

@@ -5,7 +5,7 @@
                 // The default provider LLM AI: openai, deepseek, etc
                 "provider" : "openrouter",
                 // The default request params to use when calling a provider, any provider
-                // Ex: { temperature: 0.5, max_tokens: 100, model: "gpt-3.5-turbo" }
+                // Ex: { temperature: 0.5, max_tokens: 100, model: "gpt-5.6-luna" }
                 // gpt-oss-120b
                 "defaultParams" : {
                     //"model": "stepfun/step-3.5-flash"
@@ -22,17 +22,32 @@
                 "providers" : {
                     "openai" : {
                     	"params" : {
-							"model": "gpt-3.5-turbo"
+							"model": "gpt-5.6-luna"
 						}
                     },
 					"claude" : {
 						"params": {
-							"model": "claude-sonnet-4-5"
+							"model": "claude-sonnet-5"
+						}
+					},
+					// See examples/40-bedrock.bxs. region/bearerToken here are optional —
+					// omit them entirely to fall back to the default AWS credential chain
+					// (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY env vars, then ECS/EKS
+					// container credentials, then EC2 IMDSv2 instance-role credentials).
+					"bedrock" : {
+						"params" : {
+							"model" : "anthropic.claude-3-5-sonnet-20241022-v2:0"
+						},
+						"options" : {
+							"region" : "us-east-1"
+							// "bearerToken" : "" // or set AWS_BEARER_TOKEN_BEDROCK instead
 						}
 					}
                 },
-                // The default timeout of the ai requests
-                "timeout" : 30,
+                // The default timeout of the ai requests in seconds. Omitted here on purpose
+                // to inherit the module's own default (90s) — see bx-ai's ModuleConfig.bx.
+                // If you need a shorter/longer timeout for this project, set it explicitly:
+                // "timeout" : 90,
                 // If true, the AI request will be logged into the ai.log
                 "logRequest" : false,
                 // If true, the AI request will be logged to the console
@@ -70,50 +85,52 @@
 				// Uses the defaults from the provider config (e.g. model: gpt-4o-mini-tts) if not overridden here
 				"defaultSpeechModel"        : "",
 				"defaultTranscriptionModel" : ""
-			}
+			},
 
 			// --------------------------------------------------------------------------
 			// Security Settings — Prompt-injection guardrails (see examples/34-security-guardrails.bxs)
 			// --------------------------------------------------------------------------
-			// Uncomment to auto-attach InputSanitizerMiddleware/fencing to EVERY chat
-			// request (aiChat, aiModel, aiAgent) instead of attaching middleware per-request.
-			// "security" : {
-			// 	"enabled" : false,
-			// 	"input" : {
-			// 		"enabled" : true,
-			// 		"action" : "flag",
-			// 		"detectors" : [],
-			// 		"customPatterns" : [],
-			// 		"normalizeUnicode" : true,
-			// 		"stripZeroWidth" : true,
-			// 		"scanToolResults" : true
-			// 	},
-			// 	"fencing" : {
-			// 		"enabled" : true,
-			// 		"fenceContext" : true,
-			// 		"escapeBindings" : true,
-			// 		"preamble" : ""
-			// 	}
-			// },
+			// enabled: false by default here — every example that demonstrates a security
+			// middleware attaches it per-request instead, so this project can also show what
+			// happens WITHOUT it. Flip enabled to true to auto-attach InputSanitizerMiddleware/
+			// fencing to EVERY chat request (aiChat, aiModel, aiAgent) project-wide.
+			"security" : {
+				"enabled" : false,
+				"input" : {
+					"enabled" : true,
+					"action" : "flag",
+					"detectors" : [],
+					"customPatterns" : [],
+					"normalizeUnicode" : true,
+					"stripZeroWidth" : true,
+					"scanToolResults" : true
+				},
+				"fencing" : {
+					"enabled" : true,
+					"fenceContext" : true,
+					"escapeBindings" : true,
+					"preamble" : ""
+				}
+			},
 
 			// --------------------------------------------------------------------------
-			// Gateway Settings — per-gateway configuration for aiGateway( name ) (see examples/35-gateways.bxs)
+			// Gateway Settings — per-gateway configuration for aiGateway( name ) (see examples/35-gateways.bxs, examples/37-gateway-sessions.bxs)
 			// --------------------------------------------------------------------------
 			// The name of the key is the gateway name; each gateway has its own options.
 			// Ex: { "slack": { "botToken": "...", "signingSecret": "..." } }
-			// "gateways" : {
-			// },
+			"gateways" : {
+			},
 
 			// --------------------------------------------------------------------------
 			// HITL Settings — default decision store for approve_always/approve_session
 			// durable grants (see examples/36-hitl-batching-and-grants.bxs)
 			// --------------------------------------------------------------------------
-			// "hitl" : {
-			// 	"decisionStore" : {
-			// 		"provider" : "cache",
-			// 		"config" : {}
-			// 	}
-			// }
+			"hitl" : {
+				"decisionStore" : {
+					"provider" : "cache",
+					"config" : {}
+				}
+			}
         }
     }
 }
