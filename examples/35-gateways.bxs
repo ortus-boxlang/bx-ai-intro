@@ -47,6 +47,34 @@ println( "supports humanApproval: " & mockGateway.supports( "humanApproval" ) )
 println( "" )
 
 // ============================================================================
+// Example 1b: Auto-Registering a Gateway with register: / module:
+// ============================================================================
+// This is the same mechanism an external gateway module (e.g. bx-ai-gateway-slack) uses
+// to make itself discoverable under its own name: aiGateway( register: true ) drops the
+// newly-constructed instance into aiGatewayRegistry() under "name@module", so a later
+// aiGateway( "http" ) call — or a direct aiGatewayRegistry().get() lookup — finds THIS
+// same configured instance instead of constructing a fresh, unconfigured one.
+println( "--- Example 1b: Auto-Register via register:/module: ---" )
+println( "" )
+
+registeredHttpGateway = aiGateway(
+    name    : "http",
+    options : { secret: "demo-webhook-secret" },
+    register: true,
+    module  : "my-module"
+)
+
+registryKey = "http@my-module"
+println( "Registered under key: " & registryKey )
+println( "aiGatewayRegistry().has( '" & registryKey & "' ): " & aiGatewayRegistry().has( registryKey ) )
+
+// Prove it's the SAME configured instance (not a fresh, unconfigured one) by reading back
+// a value only the register:true call above configured.
+fromRegistry = aiGatewayRegistry().get( registryKey )
+println( "Looked-up instance carries the same configured secret: " & ( fromRegistry.getSecret() == registeredHttpGateway.getSecret() ) )
+println( "" )
+
+// ============================================================================
 // Example 2: Scripted Approvals — Fully Automated Demo
 // ============================================================================
 println( "--- Example 2: Scripted Approval Flow ---" )
@@ -133,6 +161,8 @@ println( "1. aiGateway( name, options ) resolves core gateways: mock, cli, http"
 println( "2. HumanInTheLoopMiddleware( gateway: ... ) routes approvals through it" )
 println( "3. MockGateway.setScriptedDecisions() enables fully automated testing" )
 println( "4. Every gateway declares capabilities (getCapabilities()/supports())" )
-println( "5. Platform gateways (Slack, Teams, etc.) ship as external modules and" )
-println( "   register into gatewayRegistry() — aiGateway('myplatform') then finds them" )
+println( "5. aiGateway( register: true, module: '...' ) auto-registers the instance into" )
+println( "   aiGatewayRegistry() under 'name@module' for later discovery/reuse" )
+println( "6. Platform gateways (Slack, Teams, etc.) ship as external modules and" )
+println( "   register into aiGatewayRegistry() — aiGateway('myplatform') then finds them" )
 println( "" )

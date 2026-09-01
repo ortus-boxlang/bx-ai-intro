@@ -1,0 +1,196 @@
+/**
+* Example 38: Agent Run Control — cancelRun() & steerRun()
+*
+* Every AiAgent auto-attaches an internal RunControlMiddleware, which is what backs two
+* methods addressable purely by threadId, from ANY code path — a webhook handler, an admin
+* endpoint, a scheduled task — with no reference to the original run()/stream() call kept
+* around:
+*
+*   agent.cancelRun( threadId, reason )  — stop the run active for that thread
+*   agent.steerRun( threadId, input )    — splice a new message into that SAME live turn
+*
+* Both take effect at the run's next checkpoint (beforeLLMCall / beforeToolCall) — there is
+* no mid-token-generation interruption — and both are safe no-ops if nothing is active for
+* that threadId. Both also fire an interceptor event (onAIAgentRunCancel / onAIAgentRunSteer)
+* the moment they actually cancel/steer something.
+*
+* This example runs fully offline against the "mock" provider, so every response is
+* deterministic and no API key is required. Part 1 & 2 trigger cancelRun()/steerRun() from
+* INSIDE a tool closure — synchronous, so the outcome is 100% deterministic, no sleeps. Part
+* 3 shows the more realistic shape: cancelRun() called from a SEPARATE code path (a
+* background thread standing in for "an admin endpoint") while the run is genuinely still in
+* flight, using runAsync() + sleep().
+*
+* What you'll learn:
+* - Cancelling an in-flight agent run by threadId with cancelRun()
+* - Steering an in-flight agent run by threadId with steerRun()
+* - onAIAgentRunCancel / onAIAgentRunSteer firing only when something was actually cancelled/steered
+* - Both are safe no-ops on a threadId with nothing active
+* - Calling cancelRun() from a genuinely separate thread/code path
+*
+* Run:
+*   boxlang examples/38-agent-run-control.bxs
+*/
+import bxModules.bxai.models.runnables.AiModel
+
+println( "========================================" )
+println( "Example 38: Agent Run Control" )
+println( "========================================" )
+println( "" )
+
+// Register both interceptors up front — they fire for every section below.
+BoxRegisterInterceptor(
+    function( data ) {
+        println( "  [EVENT] onAIAgentRunCancel  threadId=" & data.threadId & "  reason=" & data.reason )
+    },
+    "onAIAgentRunCancel"
+)
+BoxRegisterInterceptor(
+    function( data ) {
+        println( "  [EVENT] onAIAgentRunSteer   threadId=" & data.threadId & "  input=" & data.input )
+    },
+    "onAIAgentRunSteer"
+)
+
+// ============================================================================
+// Example 1: cancelRun() — stop an in-flight run at its next checkpoint
+// ============================================================================
+println( "--- Example 1: cancelRun() ---" )
+println( "" )
+
+cancelModelSvc = aiService( "mock" )
+cancelModelSvc.setResponses( [
+    { toolCalls: [ { name: "riskyStep", arguments: {} } ] },
+    // Scripted for a SECOND LLM call that should never actually be reached —
+    // cancelRun() below stops the run at the beforeLLMCall checkpoint right before it.
+    "This response should never be used — the run was cancelled first."
+] )
+
+cancelAgent = aiAgent( name: "cancel-demo-agent", model: new AiModel( service: cancelModelSvc ) )
+cancelThreadId = "cancel-demo-thread"
+
+riskyStep = aiTool( "riskyStep", "One step of a longer operation.", () => {
+    println( "  riskyStep executing — cancelling this run from here, as if a webhook told us to stop..." )
+    cancelAgent.cancelRun( cancelThreadId, "Cancelled by caller." )
+    return "step completed before the cancellation took effect"
+} )
+cancelAgent.withTools( [ riskyStep ] )
+
+cancelResult = cancelAgent.run( "Perform the risky operation.", {}, { threadId: cancelThreadId } )
+
+if ( isObject( cancelResult ) && cancelResult.isCancelled() ) {
+    println( "Run cancelled as expected. Reason: " & cancelResult.getReason() )
+} else {
+    println( "Note: expected a cancelled result but got: " & cancelResult )
+}
+println( "" )
+
+// ============================================================================
+// Example 2: steerRun() — splice a message into the SAME live turn
+// ============================================================================
+println( "--- Example 2: steerRun() ---" )
+println( "" )
+
+steerModelSvc = aiService( "mock" )
+steerModelSvc.setResponses( [
+    { toolCalls: [ { name: "steeredStep", arguments: {} } ] },
+    "Final answer for the steer demo."
+] )
+
+steerAgent = aiAgent( name: "steer-demo-agent", model: new AiModel( service: steerModelSvc ) )
+steerThreadId = "steer-demo-thread"
+
+steeredStep = aiTool( "steeredStep", "One step of a longer operation.", () => {
+    println( "  steeredStep executing — steering in an extra instruction mid-run..." )
+    steerAgent.steerRun( steerThreadId, "Please also mention BANANA in your answer." )
+    return "step completed"
+} )
+steerAgent.withTools( [ steeredStep ] )
+
+steerResult = steerAgent.run( "Perform the steered operation.", {}, { threadId: steerThreadId } )
+println( "Run finished normally (steer never restarts anything): " & steerResult )
+
+// Prove the steered message actually reached the live request, the same way the model saw it.
+steeredReachedRequest = false
+steerModelSvc.getReceivedRequests().last().messages.each( ( m ) => {
+    if ( isSimpleValue( m.content ?: "" ) && m.content contains "BANANA" ) {
+        steeredReachedRequest = true
+    }
+} )
+println( "Steered text present in the final LLM request: " & steeredReachedRequest )
+println( "" )
+
+// ============================================================================
+// Example 3: Safe No-Ops — nothing active for a threadId
+// ============================================================================
+println( "--- Example 3: Safe No-Ops ---" )
+println( "" )
+
+noopAgent = aiAgent( name: "noop-demo-agent", model: aiModel( provider: "mock", options: {
+    providerOptions: { responses: [ "unused" ] }
+} ) )
+
+cancelNoop = noopAgent.cancelRun( "thread-that-never-ran" )
+steerNoop  = noopAgent.steerRun( "thread-that-never-ran", "hello?" )
+println( "cancelRun() on an inactive thread returned: " & cancelNoop & " (no event fired above)" )
+println( "steerRun()  on an inactive thread returned: " & steerNoop & " (no event fired above)" )
+println( "" )
+
+// ============================================================================
+// Example 4: cancelRun() from a genuinely separate code path
+// ============================================================================
+// The tool-closure trick above is 100% deterministic, but it calls cancelRun() from
+// INSIDE the same call stack as the run itself. cancelRun()/steerRun() are designed to be
+// called from anywhere — this section calls it from a truly separate thread via runAsync(),
+// standing in for an admin endpoint or webhook handler reacting to some external signal.
+println( "--- Example 4: cancelRun() from a Separate Thread ---" )
+println( "" )
+
+asyncModelSvc = aiService( "mock" )
+asyncModelSvc.setResponses( [
+    { toolCalls: [ { name: "slowExternalStep", arguments: {} } ] },
+    "This response should never be used either."
+] )
+
+asyncAgent = aiAgent( name: "async-cancel-demo-agent", model: new AiModel( service: asyncModelSvc ) )
+asyncThreadId = "async-cancel-demo-thread"
+
+// Sleeps for real, so the run is still genuinely in flight when the code below cancels it.
+slowExternalStep = aiTool( "slowExternalStep", "A step that takes real wall-clock time.", () => {
+    sleep( 800 )
+    return "slow step finished"
+} )
+asyncAgent.withTools( [ slowExternalStep ] )
+
+println( "Dispatching the run on a background thread..." )
+runFuture = runAsync( () => asyncAgent.run( "Perform the slow operation.", {}, { threadId: asyncThreadId } ) )
+
+// Give the background run time to reach the tool call and start sleeping, then cancel it
+// from HERE — a separate code path with no reference to the run() call above.
+sleep( 200 )
+println( "Cancelling from the 'admin endpoint' code path while the run is still in flight..." )
+wasCancelled = asyncAgent.cancelRun( asyncThreadId, "Admin requested cancellation." )
+println( "cancelRun() found an active run and cancelled it: " & wasCancelled )
+
+asyncResult = runFuture.get()
+if ( isObject( asyncResult ) && asyncResult.isCancelled() ) {
+    println( "Confirmed: the backgrounded run came back cancelled. Reason: " & asyncResult.getReason() )
+} else {
+    println( "Note: expected a cancelled result but got: " & asyncResult )
+}
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. agent.cancelRun( threadId, reason ) stops the run active for that thread" )
+println( "2. agent.steerRun( threadId, input ) splices a message into the SAME live turn" )
+println( "3. Both act at the next beforeLLMCall/beforeToolCall checkpoint, not instantly" )
+println( "4. Both are addressable purely by threadId — callable from any code path, not" )
+println( "   just from inside the run() call that started the thread" )
+println( "5. Both are safe no-ops when nothing is active for that threadId" )
+println( "6. onAIAgentRunCancel / onAIAgentRunSteer fire ONLY when something real happened" )
+println( "" )

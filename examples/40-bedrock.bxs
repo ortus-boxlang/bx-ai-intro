@@ -1,0 +1,128 @@
+/**
+* Example 40: AWS Bedrock
+*
+* The "bedrock" provider talks to AWS Bedrock's managed foundation models (Claude, Titan,
+* Llama, Cohere, Mistral) through the SAME aiChat()/aiModel()/aiAgent() surface as every
+* other provider — only the auth story is different. Unlike API-key providers, Bedrock
+* authenticates with AWS Signature Version 4 signing, resolved in order:
+*   1. Explicit awsAccessKeyId/awsSecretAccessKey/awsSessionToken passed to the call
+*   2. AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN environment variables
+*   3. Bearer-token auth (a Bedrock long-term API key) — an explicit `bearerToken` option, or
+*      the AWS_BEARER_TOKEN_BEDROCK environment variable — used ONLY when no AWS access key
+*      was resolved via steps 1/2
+*   4. ECS/EKS container credentials
+*   5. EC2 IMDSv2 instance-role credentials
+* Steps 1-3 are what you'd set explicitly for local dev; steps 4/5 are the "default AWS
+* credential chain" that resolves automatically with zero configuration when running inside
+* AWS infrastructure (an ECS task, an EC2 instance, etc.) — see providerOptions in Example 2.
+*
+* Tool calling and schema-typed structured output are wired up for Claude-family models on
+* Bedrock (Claude's own tool-use API) — Example 3 below.
+*
+* This example needs real AWS credentials (or a Bedrock bearer token) and access to a
+* Bedrock model to actually execute — every call is wrapped in try/catch and prints a
+* friendly skip message without them.
+*
+* What you'll learn:
+* - Selecting the bedrock provider and a Claude-on-Bedrock model id
+* - Explicit bearer-token auth via options.bearerToken / AWS_BEARER_TOKEN_BEDROCK
+* - Falling back to the default AWS credential chain by passing no credentials at all
+* - Tool-use now works for Claude-on-Bedrock
+*
+* Run:
+*   boxlang examples/40-bedrock.bxs
+*/
+println( "========================================" )
+println( "Example 40: AWS Bedrock" )
+println( "========================================" )
+println( "" )
+
+// A Claude-on-Bedrock inference profile / model id — swap for whatever your account has
+// enabled in the Bedrock console.
+bedrockModel = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+// ============================================================================
+// Example 1: Bearer-Token Auth
+// ============================================================================
+println( "--- Example 1: Bearer-Token Auth ---" )
+println( "" )
+
+try {
+    // bearerToken can also be omitted here entirely and set via the AWS_BEARER_TOKEN_BEDROCK
+    // environment variable instead — either way, bearer auth is opt-in only and is NEVER
+    // inferred from a generic apiKey.
+    bearerResult = aiChat(
+        "What foundation models does AWS Bedrock support?",
+        { model: bedrockModel },
+        {
+            provider    : "bedrock",
+            region      : "us-east-1",
+            bearerToken : getSystemSetting( "AWS_BEARER_TOKEN_BEDROCK", "" )
+        }
+    )
+    println( bearerResult )
+} catch ( any e ) {
+    println( "Skipped (needs AWS_BEARER_TOKEN_BEDROCK): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 2: Default AWS Credential Chain
+// ============================================================================
+println( "--- Example 2: Default AWS Credential Chain ---" )
+println( "" )
+
+try {
+    // No explicit credentials passed at all — AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/
+    // AWS_SESSION_TOKEN environment variables, then ECS/EKS container credentials, then EC2
+    // IMDSv2 instance-role credentials are tried in that order automatically.
+    chainResult = aiChat(
+        "What foundation models does AWS Bedrock support?",
+        { model: bedrockModel },
+        { provider: "bedrock", region: "us-east-1" }
+    )
+    println( chainResult )
+} catch ( any e ) {
+    println( "Skipped (needs AWS credentials resolvable via the default chain): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 3: Tool-Use on Claude-on-Bedrock
+// ============================================================================
+println( "--- Example 3: Tool-Use on Claude-on-Bedrock ---" )
+println( "" )
+
+weatherTool = aiTool(
+    "getWeather",
+    "Get the current weather for a city.",
+    ( city ) => "It's 72F and sunny in #city#."
+).describeCity( "The city to get weather for" )
+
+try {
+    toolResult = aiChat(
+        "What's the weather like in Miami?",
+        { model: bedrockModel, tools: [ weatherTool ] },
+        { provider: "bedrock", region: "us-east-1" }
+    )
+    println( toolResult )
+} catch ( any e ) {
+    println( "Skipped (needs AWS credentials + Bedrock model access): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. provider: 'bedrock' uses the same aiChat()/aiModel()/aiAgent() surface as" )
+println( "   every other provider — only auth is different" )
+println( "2. Explicit bearerToken (or AWS_BEARER_TOKEN_BEDROCK) opts into bearer-token auth" )
+println( "3. Omit credentials entirely to fall back to the default AWS credential chain" )
+println( "   (env vars -> container credentials -> EC2 instance role)" )
+println( "4. Explicit/env AWS access keys always win over bearer auth when both are present" )
+println( "5. Tool-use and schema-typed structured output work for Claude-family models" )
+println( "   on Bedrock via Claude's own tool-use API" )
+println( "" )

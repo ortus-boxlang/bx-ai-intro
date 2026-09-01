@@ -27,15 +27,21 @@ This is a **presentation/demo workspace** showcasing the BoxLang AI Module (`bx-
 bx-ai-intro/
 ├── config/boxlang.json      # Module configuration (provider, models, settings)
 ├── .env                      # API keys for providers (not committed)
-├── examples/                 # Progressive tutorial scripts
-│   ├── 01-basic-chat.bxs
-│   ├── 02-basic-chat-custom-provider.bxs
-│   ├── 03-basic-chat-options.bxs
-│   ├── 04-baseic-chat-structured-output.bxs
+├── examples/                 # Progressive tutorial scripts, numbered 01-40
+│   ├── 01-basic-chat.bxs           through 04-basic-chat-structured-output.bxs  — basic chat
+│   ├── 05-chat-with-messages.bxs   through 12-message-context.bxs               — messages, multimodal, streaming
+│   ├── 13-basic-pipeline.bxs       through 18-pipeline-multi-model.bxs          — pipelines
+│   ├── 19-basic-agent.bxs          through 27-agent-scheduler.bx                — agents (memory, tools, subagents, skills, middleware, MCP, scheduling)
+│   ├── 28-speech-tts.bxs           through 30-speech-translate.bxs              — speech/audio
+│   ├── 31-image-generation.bxs     through 33-agent-registry.bxs                — images, web search, agent registry
+│   ├── 34-security-guardrails.bxs  through 36-hitl-batching-and-grants.bxs      — security, gateways, human-in-the-loop
+│   ├── 37-gateway-sessions.bxs     through 40-bedrock.bxs                       — gateway sessions, run control, reasoning, Bedrock
 │   └── models/              # BoxLang classes for structured output
 │       └── Product.bx
 └── boxlang_modules/bx-ai/   # The AI module (installed via box install)
 ```
+
+See the README's "Progressive Examples" tables for the full, per-example breakdown.
 
 ## Running Examples
 
@@ -58,9 +64,9 @@ boxlang examples/01-basic-chat.bxs
             "settings": {
                 "provider": "openrouter",           // Default provider
                 "defaultParams": {
-                    "model": "stepfun/step-3.5-flash"  // Default model
+                    "model": "openrouter/free"  // Default model
                 },
-                "timeout": 30,
+                // "timeout": 90,                    // omitted -> inherits the module's 90s default
                 "logRequestToConsole": true,        // Enable for debugging
                 "logResponseToConsole": false,      // Careful: can expose sensitive data
                 "returnFormat": "single"            // Options: single, all, raw, json, xml

@@ -1,0 +1,181 @@
+/**
+* Example 39: Reasoning — Enabling It & Reading It Back
+*
+* Several providers can run an internal reasoning/thinking pass before producing their
+* final answer. bx-ai normalizes that reasoning onto the SAME envelope regardless of which
+* provider you're on:
+*   - Non-streaming: choices[1].message.reasoning  (use options.returnFormat: "raw")
+*   - Streaming:     chunk.choices?.first()?.delta?.reasoning
+*
+* Enabling reasoning is provider-specific and goes in `params`:
+*   - Claude:  params: { thinking: { type: "enabled", budget_tokens: 10000 } }
+*   - OpenAI:  params: { reasoning_effort: "high" }   (low | medium | high)
+*
+* Whatever the provider calls it natively (thinking, reasoning_content, etc.), bx-ai maps it
+* onto that one standard `reasoning` key so your code doesn't branch per provider. Absence is
+* normal — a non-reasoning model, or a provider that never enabled it for the request, simply
+* has no `reasoning` key, so always read it with `?: ""`.
+*
+* Parts 1 & 2 below call REAL providers and need a real API key (CLAUDE_API_KEY /
+* OPENAI_API_KEY) to actually execute — they're wrapped in try/catch and print a friendly
+* skip message without one. Parts 3 & 4 run fully offline against the "mock" provider (which
+* honors a scripted `reasoning` key the same way every real provider's normalized output
+* does), so the READING side of this example is always runnable with no API key at all.
+*
+* What you'll learn:
+* - Enabling extended thinking on Claude via params.thinking
+* - Enabling reasoning effort on OpenAI via params.reasoning_effort
+* - Reading result.choices[1].message.reasoning synchronously (returnFormat: "raw")
+* - Reading chunk.choices?.first()?.delta?.reasoning while streaming
+*
+* Run:
+*   boxlang examples/39-reasoning.bxs
+*/
+println( "========================================" )
+println( "Example 39: Reasoning" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Enabling Reasoning on Claude — params.thinking
+// ============================================================================
+println( "--- Example 1: Claude Extended Thinking ---" )
+println( "" )
+
+try {
+    claudeResult = aiChat(
+        "A farmer has 17 sheep. All but 9 die. How many are left? Show your reasoning.",
+        {
+            thinking: { type: "enabled", budget_tokens: 10000 }
+        },
+        { provider: "claude", returnFormat: "raw" }
+    )
+    claudeReasoning = claudeResult.choices[ 1 ].message.reasoning ?: ""
+    claudeAnswer    = claudeResult.choices[ 1 ].message.content ?: ""
+    println( "Reasoning: " & claudeReasoning )
+    println( "Answer   : " & claudeAnswer )
+} catch ( any e ) {
+    println( "Skipped (needs CLAUDE_API_KEY): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 2: Enabling Reasoning on OpenAI — params.reasoning_effort
+// ============================================================================
+println( "--- Example 2: OpenAI Reasoning Effort ---" )
+println( "" )
+
+try {
+    openaiResult = aiChat(
+        "A farmer has 17 sheep. All but 9 die. How many are left? Show your reasoning.",
+        {
+            reasoning_effort: "high"
+        },
+        { provider: "openai", returnFormat: "raw" }
+    )
+    openaiReasoning = openaiResult.choices[ 1 ].message.reasoning ?: ""
+    openaiAnswer    = openaiResult.choices[ 1 ].message.content ?: ""
+    println( "Reasoning: " & openaiReasoning )
+    println( "Answer   : " & openaiAnswer )
+} catch ( any e ) {
+    println( "Skipped (needs OPENAI_API_KEY): " & e.message )
+}
+println( "" )
+
+// ============================================================================
+// Example 3: Reading Reasoning Synchronously — the Normalized Envelope, Offline
+// ============================================================================
+println( "--- Example 3: Reading message.reasoning (offline, deterministic) ---" )
+println( "" )
+
+// The mock provider honors a scripted "reasoning" key on the normalized message.reasoning
+// key — the exact same key every real reasoning-capable provider's response is mapped onto.
+mockReasoningResult = aiChat(
+    "A farmer has 17 sheep. All but 9 die. How many are left?",
+    {},
+    {
+        provider       : "mock",
+        returnFormat   : "raw",
+        providerOptions: {
+            responses: [
+                {
+                    content  : "9 sheep are left.",
+                    reasoning: 'The phrase "All but 9 die" means 9 survive — the other details (starting count, cause of death) are irrelevant to the answer.'
+                }
+            ]
+        }
+    }
+)
+
+reasoning = mockReasoningResult.choices[ 1 ].message.reasoning ?: ""
+answer    = mockReasoningResult.choices[ 1 ].message.content ?: ""
+println( "Reasoning: " & reasoning )
+println( "Answer   : " & answer )
+println( "" )
+println( "Same read on a model with reasoning disabled — reasoning key is simply absent:" )
+noReasoningResult = aiChat( "Say hello.", {}, {
+    provider       : "mock",
+    returnFormat   : "raw",
+    providerOptions: { responses: [ "Hello!" ] }
+} )
+println( "reasoning ?: '' -> '" & ( noReasoningResult.choices[ 1 ].message.reasoning ?: "" ) & "' (empty, not an error)" )
+println( "" )
+
+// ============================================================================
+// Example 4: Reading Reasoning While Streaming — delta.reasoning
+// ============================================================================
+println( "--- Example 4: Reading delta.reasoning while streaming (offline, deterministic) ---" )
+println( "" )
+
+// A reasoning-capable provider streams the model's thinking BEFORE the answer text — the
+// mock provider mirrors that ordering so streaming consumers behave identically under test.
+streamedReasoning = ""
+streamedAnswer    = ""
+
+aiChatStream(
+    "A farmer has 17 sheep. All but 9 die. How many are left?",
+    ( chunk ) => {
+        var reasoningPiece = chunk.choices?.first()?.delta?.reasoning ?: ""
+        var contentPiece   = chunk.choices?.first()?.delta?.content ?: ""
+        if ( len( reasoningPiece ) ) {
+            streamedReasoning &= reasoningPiece
+        }
+        if ( len( contentPiece ) ) {
+            streamedAnswer &= contentPiece
+        }
+    },
+    {},
+    {
+        provider       : "mock",
+        providerOptions: {
+            responses: [
+                {
+                    content  : "9 sheep are left.",
+                    reasoning: "Only the survivor count matters here — 9."
+                }
+            ]
+        }
+    }
+)
+
+println( "Streamed reasoning: " & streamedReasoning )
+println( "Streamed answer   : " & streamedAnswer )
+println( "" )
+
+// ============================================================================
+// Key Takeaways
+// ============================================================================
+println( "========================================" )
+println( "KEY TAKEAWAYS:" )
+println( "========================================" )
+println( "1. Enabling reasoning is provider-specific and lives in params:" )
+println( "   Claude -> thinking: { type: 'enabled', budget_tokens: N }" )
+println( "   OpenAI -> reasoning_effort: 'low' | 'medium' | 'high'" )
+println( "2. Reading it back is the SAME on every provider — the normalized envelope:" )
+println( "   sync      -> choices[1].message.reasoning  (returnFormat: 'raw')" )
+println( "   streaming -> chunk.choices?.first()?.delta?.reasoning" )
+println( "3. Absence is normal — always guard with ?: '' " )
+println( "4. Reasoning-capable providers stream thinking BEFORE the answer text" )
+println( "5. The mock provider honors a scripted 'reasoning' key, so this whole read-side" )
+println( "   pattern is testable offline with zero API keys" )
+println( "" )

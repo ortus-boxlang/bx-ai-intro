@@ -189,3 +189,48 @@ println( "Triggering summarize() again to observe the event:" )
 fileMemory.add( { role: "user", content: "One more question to guarantee there's something new to summarize." } )
 fileMemory.summarize( { keepRecent: 2, provider: "mock", model: "mock-model" } )
 println( "" )
+
+// ============================================================================
+// NEW: summarize()'s userId / conversationId Scoping on a SHARED Memory Instance
+// ============================================================================
+println( "" )
+println( "=== summarize() Scoping: userId / conversationId Overrides ===" )
+println( "" )
+
+// A single memory instance, built with NO default userId/conversationId, shared across
+// multiple users/conversations — every call below scopes itself explicitly instead of
+// relying on an instance default. add()/getAll()/summarize() all take the same two
+// trailing overrides: (..., userId, conversationId).
+sharedMemory = aiMemory(
+	memory: "summary",
+	config: {
+		summaryProvider: "mock",
+		summaryModel: "mock-model"
+	}
+)
+
+sharedMemory.add( { role: "user", content: "Bob: What's your return policy?" }, "bob", "conv-bob" )
+sharedMemory.add( { role: "assistant", content: "Bob: Returns are accepted within 30 days." }, "bob", "conv-bob" )
+sharedMemory.add( { role: "user", content: "Carol: Do you ship internationally?" }, "carol", "conv-carol" )
+sharedMemory.add( { role: "assistant", content: "Carol: Yes, to over 40 countries." }, "carol", "conv-carol" )
+
+println( "Before scoped summarize():" )
+bobCount = sharedMemory.getAll( "bob", "conv-bob" ).len()
+println( "  bob/conv-bob messages  : #bobCount#" )
+carolCount = sharedMemory.getAll( "carol", "conv-carol" ).len()
+println( "  carol/conv-carol messages: #carolCount#" )
+println( "" )
+
+// Summarize ONLY bob's scope — carol's conversation is untouched by this call.
+println( "Calling summarize( config, userId: 'bob', conversationId: 'conv-bob' )..." )
+sharedMemory.summarize( { keepRecent: 1, provider: "mock", model: "mock-model" }, "bob", "conv-bob" )
+
+println( "After scoped summarize() — only bob's scope was compressed:" )
+bobCountAfter = sharedMemory.getAll( "bob", "conv-bob" ).len()
+println( "  bob/conv-bob messages  : #bobCountAfter# (compressed)" )
+carolCountAfter = sharedMemory.getAll( "carol", "conv-carol" ).len()
+println( "  carol/conv-carol messages: #carolCountAfter# (unchanged)" )
+println( "" )
+println( "Omitting both userId and conversationId summarizes the instance-default scope" )
+println( "instead — that's why every call above passed them explicitly." )
+println( "" )
