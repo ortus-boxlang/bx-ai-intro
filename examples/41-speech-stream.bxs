@@ -1,0 +1,189 @@
+/**
+* Example 41: Streaming Text-to-Speech with aiSpeakStream()
+*
+* aiSpeak() waits for the complete audio file. aiSpeakStream() hands you the audio
+* in pieces AS THE PROVIDER GENERATES IT, so you can start playing or forwarding
+* it after the first chunk. That is what voice agents, phone bridges and live web
+* pages need.
+*
+* Your callback receives one struct per event, discriminated by `type`:
+*   { type: "audio", data: <binary>, format, sampleRate, sequence }
+*   { type: "timestamps", words, start, end }   (Cartesia over SSE with add_timestamps)
+*   { type: "done", chunks, bytes }             (always last)
+*
+* Return an explicit `false` from the callback to stop early (for example when a caller
+* interrupts the agent). The provider connection is closed immediately.
+*
+* This example uses Cartesia. Streaming also works with elevenlabs, openai, mistral and
+* gemini: just change `provider` and set that provider's API key.
+*
+* Requires: CARTESIA_API_KEY, and a bx-ai build that includes aiSpeakStream()
+*           (the development branch until the next bx-ai release)
+*
+* What you'll learn:
+* - How to stream audio chunks to a callback
+* - How to measure time to first audio
+* - How to stop a stream early (barge-in)
+* - How to get word timestamps
+* - How to use the fluent builder with .stream()
+* - Which output format to pick (mp3, pcm, mulaw)
+*
+* To hear the audio in a browser instead, see examples/speech-stream-http/
+*/
+println( "========================================" )
+println( "Example 41: Streaming Speech (aiSpeakStream)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Stream mp3 chunks and save them to a file
+// ============================================================================
+println( "--- Example 1: Stream mp3 and save the chunks ---" )
+println( "" )
+
+outputFile = expandPath( "./data/stream-cartesia.mp3" )
+audioBuffer = createObject( "java", "java.io.ByteArrayOutputStream" ).init()
+
+summary = aiSpeakStream(
+    text    : "BoxLang can stream speech to your customers while it is still being generated.",
+    callback: ( event ) => {
+        if ( event.type == "audio" ) {
+            audioBuffer.write( event.data )
+            // mp3 arrives in many small chunks, so only show the first few
+            if ( event.sequence <= 3 ) {
+                println( "  chunk " & event.sequence & ": " & event.data.len() & " bytes" )
+            }
+        }
+    },
+    options : { provider: "cartesia", outputFormat: "mp3" }
+)
+
+fileWrite( outputFile, audioBuffer.toByteArray() )
+
+println( "  ..." )
+println( "" )
+println( "Chunks:    " & summary.chunks )
+println( "Bytes:     " & summary.bytes )
+println( "Completed: " & summary.completed )
+println( "Saved to:  " & outputFile )
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 2: Time to first audio
+//
+// The reason to stream: the first chunk arrives long before generation finishes.
+// ============================================================================
+println( "--- Example 2: Time to first audio ---" )
+println( "" )
+
+startedAt = getTickCount()
+firstAudioAt = 0
+
+aiSpeakStream(
+    text    : "Streaming lets a listener hear the first words almost immediately, even for a long answer. That is the whole point of streaming speech.",
+    callback: ( event ) => {
+        if ( event.type == "audio" && firstAudioAt == 0 ) {
+            firstAudioAt = getTickCount() - startedAt
+        }
+    },
+    options : { provider: "cartesia", outputFormat: "pcm" }
+)
+
+totalMs = getTickCount() - startedAt
+
+println( "First audio chunk after: " & firstAudioAt & " ms" )
+println( "Whole stream finished:   " & totalMs & " ms" )
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 3: Stop early (barge-in)
+//
+// Return false from the callback to stop. The final `done` event is still
+// delivered, and the summary reports completed: false.
+// ============================================================================
+println( "--- Example 3: Stop early ---" )
+println( "" )
+
+received = 0
+
+summary = aiSpeakStream(
+    text    : "This is a long sentence that will be cut off because the caller interrupts the agent after just a few chunks of audio.",
+    callback: ( event ) => {
+        if ( event.type == "audio" ) {
+            received++
+            if ( received >= 3 ) {
+                return false
+            }
+        }
+    },
+    options : { provider: "cartesia", outputFormat: "mulaw" }
+)
+
+println( "Chunks received before stopping: " & received )
+println( "Stream completed normally:      " & summary.completed & "  (false means our callback stopped it)" )
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 4: Word timestamps
+//
+// pcm, mulaw and alaw stream over SSE with Cartesia, which can send word timings.
+// Use them to highlight words, drive captions or lip-sync.
+// ============================================================================
+println( "--- Example 4: Word timestamps ---" )
+println( "" )
+
+aiSpeakStream(
+    text    : "Each word arrives with its timing.",
+    callback: ( event ) => {
+        if ( event.type == "timestamps" ) {
+            for ( i = 1; i <= event.words.len(); i++ ) {
+                println( "  " & event.words[ i ] & "  " & numberFormat( event.start[ i ], "0.00" ) & "s to " & numberFormat( event.end[ i ], "0.00" ) & "s" )
+            }
+        }
+    },
+    params  : { add_timestamps: true },
+    options : { provider: "cartesia", outputFormat: "pcm" }
+)
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 5: Fluent builder
+// ============================================================================
+println( "--- Example 5: Fluent builder with .stream() ---" )
+println( "" )
+
+summary = aiSpeak()
+    .text( "The fluent builder streams too." )
+    .provider( "cartesia" )
+    .female()
+    .asPCM()
+    .stream( ( event ) => {
+        if ( event.type == "done" ) {
+            println( "  done: " & event.chunks & " chunks, " & event.bytes & " bytes" )
+        }
+    } )
+
+println( "Format: " & summary.audioFormat & " at " & summary.sampleRate & " Hz" )
+println( "" )
+
+// ============================================================================
+// Which format should I stream?
+//
+//   mp3     Browser playback. Plays in an <audio> tag as it arrives.
+//   pcm     Voice agents. Raw 16-bit audio, no decoding. Set params.sample_rate (default 24000).
+//   mulaw   Phone calls (Twilio, SIP). 8kHz audio that phone networks expect.
+//
+// Streaming providers: cartesia, elevenlabs, openai, mistral, gemini.
+// xAI (grok) only streams over a WebSocket, which is not supported yet.
+// ============================================================================
+println( "========================================" )
+println( "Done! See examples/speech-stream-http/ to hear it in a browser." )
+println( "========================================" )
