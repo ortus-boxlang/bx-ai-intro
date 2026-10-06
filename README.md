@@ -122,6 +122,9 @@ Each example demonstrates specific features. Run them in order to build understa
 | 28 | [Text-to-Speech](examples/28-speech-tts.bxs) | Synthesize speech with `aiSpeak()`, voices, HD models, fluent builder API |
 | 29 | [Speech-to-Text](examples/29-speech-transcribe.bxs) | Transcribe audio with `aiTranscribe()`, language hints, TTS→STT round-trip, fluent builder API |
 | 30 | [Audio Translation](examples/30-speech-translate.bxs) | Translate spoken audio to English with `aiTranslate()`, fluent builder API |
+| 41 | [Streaming Speech](examples/41-speech-stream.bxs) | Stream audio as it is generated with `aiSpeakStream()`: time to first audio, stopping early (barge-in), word timestamps, mp3 vs pcm vs mulaw |
+| 42 | [Cartesia Voices](examples/42-speech-cartesia.bxs) | `provider: "cartesia"` for TTS and STT: voices, emotion and speed, output formats, TTS→STT round-trip |
+| Web demo | [Streaming Speech over HTTP](examples/speech-stream-http) | A runnable browser demo: raw mp3 into an `<audio>` tag, plus a voice-agent view with PCM, Web Audio and word highlighting |
 
 ### Advanced Feature Examples
 

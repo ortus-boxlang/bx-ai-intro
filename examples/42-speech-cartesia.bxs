@@ -1,0 +1,114 @@
+/**
+* Example 42: Cartesia text-to-speech and speech-to-text
+*
+* Cartesia is a low-latency voice provider. Sonic generates speech and Ink-Whisper
+* transcribes it. Both work through the same BIFs you already know: aiSpeak() and
+* aiTranscribe().
+*
+* Requires: CARTESIA_API_KEY, and a bx-ai build that includes the Cartesia provider
+*           (the development branch until the next bx-ai release)
+*
+* What you'll learn:
+* - How to use provider: "cartesia" with aiSpeak() and aiTranscribe()
+* - How to pick a voice (gender shortcuts or a voice ID) and style the delivery
+* - Which output formats Cartesia supports
+* - How to run a TTS to STT round trip
+* - What happens with unsupported features (translation, flac, opus)
+*/
+println( "========================================" )
+println( "Example 42: Cartesia (aiSpeak + aiTranscribe)" )
+println( "========================================" )
+println( "" )
+
+// ============================================================================
+// Example 1: Voices and delivery
+//
+// "male" and "female" resolve to Cartesia voices. You can also pass any voice ID
+// from the Cartesia library as `voice`. generation_config controls delivery:
+// speed (0.6 to 1.5), volume (0.5 to 2.0) and emotion.
+// ============================================================================
+println( "--- Example 1: Voices and delivery ---" )
+println( "" )
+
+femalePath = expandPath( "./data/cartesia-female.wav" )
+cheerfulPath = expandPath( "./data/cartesia-cheerful.wav" )
+
+aiSpeak(
+    text   : "Hello! This is the default female voice.",
+    params : { voice: "female" },
+    options: { provider: "cartesia", outputFormat: "wav", outputFile: femalePath }
+)
+println( "Female voice saved to: " & femalePath )
+
+aiSpeak(
+    text   : "Great news! Your order has shipped.",
+    params : { voice: "male", emotion: "happy", speed: 1.1 },
+    options: { provider: "cartesia", outputFormat: "wav", outputFile: cheerfulPath }
+)
+println( "Cheerful male voice saved to: " & cheerfulPath )
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 2: Output formats
+//
+// mp3 and wav are containers. pcm, mulaw and alaw are raw audio for pipelines and phones.
+// Set params.sample_rate to change the rate.
+// ============================================================================
+println( "--- Example 2: Output formats ---" )
+println( "" )
+
+for ( format in [ "mp3", "wav", "pcm", "mulaw", "alaw" ] ) {
+    response = aiSpeak(
+        text   : "Testing the " & format & " format.",
+        options: { provider: "cartesia", outputFormat: format }
+    )
+    println( format.ucase() & ": " & response.getSize() & " bytes (" & response.getMimeType() & ")" )
+}
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 3: Speech-to-text and a round trip
+// ============================================================================
+println( "--- Example 3: Transcribe what we just said (Ink-Whisper) ---" )
+println( "" )
+
+result = aiTranscribe(
+    audio  : cheerfulPath,
+    options: { provider: "cartesia", returnFormat: "response" }
+)
+
+println( "Text:     " & result.getText() )
+println( "Language: " & result.getLanguage() )
+println( "Words:    " & result.getWords().len() )
+println( "" )
+
+cliRead( "Press Enter to continue to the next example..." )
+
+// ============================================================================
+// Example 4: What Cartesia does not do
+//
+// These fail loudly instead of quietly returning something wrong.
+// ============================================================================
+println( "--- Example 4: Unsupported features ---" )
+println( "" )
+
+try {
+    aiTranslate( audio: cheerfulPath, options: { provider: "cartesia" } )
+} catch ( any e ) {
+    println( "aiTranslate: " & e.type )
+}
+
+try {
+    aiSpeak( text: "Hi", options: { provider: "cartesia", outputFormat: "flac" } )
+} catch ( any e ) {
+    println( "flac output: " & e.type )
+}
+println( "" )
+
+println( "========================================" )
+println( "Done! To stream this audio as it is generated, see example 41." )
+println( "========================================" )
