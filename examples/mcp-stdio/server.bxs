@@ -1,0 +1,16 @@
+/**
+ * A tiny MCP server over STDIO. A client launches it as a child process:
+ *   boxlang server.bxs
+ *
+ * Only protocol messages go to stdout. Human messages go to stderr.
+ */
+import bxModules.bxai.models.mcp.MCPRequestProcessor
+
+MCPServer( "demo" ).registerTool(
+	aiTool( "add", "Add two numbers", ( required numeric a, required numeric b ) => a + b )
+		.describeA( "First number" )
+		.describeB( "Second number" )
+)
+
+systemOutput( "demo server started", true, true )
+MCPRequestProcessor::processStdio( "demo" )

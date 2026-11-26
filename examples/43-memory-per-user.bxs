@@ -1,0 +1,29 @@
+/**
+ * Example 43: One Memory, Many Users (3.8.0)
+ *
+ * A single memory instance serves every user and conversation of an agent. The
+ * userId and conversationId of each call pick the list that is read and written.
+ * Since 3.8.0 this works for window, summary and jdbc memory too.
+ *
+ * What you'll learn:
+ * - Passing userId and conversationId per call
+ * - Why Bob never sees Alice's messages
+ * - Capping the lists a window memory keeps with maxConversations
+ *
+ * No API key needed: this example only uses memory.
+ */
+
+// One shared memory, built without a user
+memory = aiMemory( memory: "window", config: { maxMessages: 10, maxConversations: 500 } )
+
+memory.add( "My name is Alice", "alice", "chat-1" )
+memory.add( "My name is Bob", "bob", "chat-1" )
+memory.add( "I am planning a trip to Rome", "alice", "chat-2" )
+
+println( "Alice, chat-1: " & memory.getAll( "alice", "chat-1" ).map( m => m.content ).toList( " | " ) )
+println( "Bob, chat-1:   " & memory.getAll( "bob", "chat-1" ).map( m => m.content ).toList( " | " ) )
+println( "Alice, chat-2: " & memory.getAll( "alice", "chat-2" ).map( m => m.content ).toList( " | " ) )
+
+// With an agent, pass the same ids as run options
+// agent = aiAgent( name: "Helper", memory: memory )
+// agent.run( "What is my name?", {}, { userId: "alice", conversationId: "chat-1" } )
