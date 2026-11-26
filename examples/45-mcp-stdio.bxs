@@ -1,0 +1,22 @@
+/**
+ * Example 45: MCP Server and Client over STDIO
+ *
+ * mcp-stdio/server.bxs is an MCP server that talks over STDIN/STDOUT. This script
+ * launches it as a child process with MCP( { command: [ ... ] } ) and calls it.
+ * Since 3.8.0 the server keeps logs off stdout and never answers notifications.
+ *
+ * No API key needed.
+ */
+serverScript = expandPath( "./mcp-stdio/server.bxs" )
+mcpClient = MCP( { command: [ "boxlang", serverScript ] } )
+
+try {
+	tools = mcpClient.listTools().getData().tools
+	println( "Tools: " & tools.map( t => t.name ).toList() )
+	println( "Input schema of add: " & jsonSerialize( tools.first().inputSchema ) )
+
+	answer = mcpClient.send( "add", { a: 2, b: 3 } )
+	println( "add( 2, 3 ) -> " & jsonSerialize( answer.getData() ) )
+} finally {
+	mcpClient.close()
+}

@@ -1,0 +1,15 @@
+/**
+ * Example 44: Provider Ids (3.8.0)
+ *
+ * model.getConfig().provider is the display name of the service. Use
+ * model.getConfig().providerId when you hand the provider back to aiService(),
+ * aiChat() and friends. The two differ for openai-compatible and docker.
+ *
+ * No API key needed: nothing is sent to a provider.
+ */
+
+for ( id in [ "openai", "ollama", "openai-compatible", "docker" ] ) {
+	config = aiModel( id, { apiKey: "not-used" } ).getConfig()
+	service = aiService( config.providerId, { apiKey: "not-used" } )
+	println( "#id#: provider=#config.provider#  providerId=#config.providerId#  aiService() -> #service.getName()#" )
+}

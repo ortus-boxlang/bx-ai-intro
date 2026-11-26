@@ -114,6 +114,7 @@ Each example demonstrates specific features. Run them in order to build understa
 | 25 | [Agent Middleware (Human-in-the-Loop)](examples/25-agent-middleware-human.bxs) | Human approval middleware |
 | 26 | [Agent MCP Servers](examples/26-agent-mcpservers.bxs) | Auto-discover tools from MCP servers |
 | 27 | [Agent Scheduler](examples/27-agent-scheduler.bx) | Scheduled and recurring agent tasks |
+| 43 | [Memory per User](examples/43-memory-per-user.bxs) | One memory for every user: `userId` and `conversationId` per call, `maxConversations` (3.8.0, no API key) |
 
 ### Speech & Audio Examples
 
@@ -140,6 +141,8 @@ Each example demonstrates specific features. Run them in order to build understa
 | 38 | [Agent Run Control](examples/38-agent-run-control.bxs) | `agent.cancelRun()` / `agent.steerRun()`, `onAIAgentRunCancel`/`onAIAgentRunSteer` |
 | 39 | [Reasoning](examples/39-reasoning.bxs) | Enabling reasoning (Claude `thinking`, OpenAI `reasoning_effort`), reading `message.reasoning` sync & streaming |
 | 40 | [AWS Bedrock](examples/40-bedrock.bxs) | `provider: "bedrock"`, bearer-token auth, default AWS credential chain, Claude tool-use on Bedrock |
+| 44 | [Provider Ids](examples/44-provider-id.bxs) | `getConfig().providerId` round trips into `aiService()` (3.8.0, no API key) |
+| 45 | [MCP over STDIO](examples/45-mcp-stdio.bxs) | An MCP server in `mcp-stdio/server.bxs` launched as a child process with `MCP( { command: [ ... ] } )` (no API key) |
 
 ### Advanced Agent Mini-Apps (`agents/`)
 
